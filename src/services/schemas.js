@@ -42,7 +42,7 @@ export const SCHEMAS = {
   ],
   logs: [
     ref('channel', 'channelId', 'Canal donde enviar registros', { section: 'Eventos' }),
-    bool('messageDelete', 'Mensajes eliminados', { value: true }),
+    bool('messageDelete', 'Mensajes eliminados', true),
     bool('messageUpdate', 'Mensajes editados', true),
     bool('memberAdd', 'Entradas de miembros', true),
     bool('memberRemove', 'Salidas de miembros', true),
