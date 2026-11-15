@@ -53,6 +53,10 @@ export function createApi(client) {
       .map((c) => ({ id: c.id, name: c.name, nsfw: c.nsfw })),
   ));
 
+  r.get('/guilds/:id/ticket-categories', (req, res) => res.json(
+    req.guild.channels.cache.filter((x) => x.type === ChannelType.GuildCategory).map((x) => ({ id: x.id, name: x.name })),
+  ));
+
   r.get('/guilds/:id/roles', (req, res) => res.json(
     req.guild.roles.cache.filter((x) => x.id !== req.guild.id && !x.managed)
       .map((x) => ({ id: x.id, name: x.name, color: x.hexColor })),
