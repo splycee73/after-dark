@@ -16,8 +16,10 @@ Un solo servicio Node.js (bot + API + dashboard) y PostgreSQL.
 - [x] Tickets privados: `.ticket` y `.close`, registro y panel de actividad.
 - [x] Logs: mensajes editados/eliminados, miembros, canales y baneos.
 - [x] Alertas: picos de entradas y menciones masivas (detección y aviso, no bloqueo automático).
-- [x] Moderación: ban, kick, timeout, warn e historial de advertencias (con jerarquía de roles).\n- [ ] Whitelist.
-- [x] Bienvenidas, despedidas y autorol automático al entrar.\n- [ ] Invitaciones, autoroles por reacción/botón y sugerencias.
+- [x] Moderación: ban, kick, timeout, warn e historial de advertencias (con jerarquía de roles).
+- [ ] Whitelist.
+- [x] Bienvenidas, despedidas y autorol automático al entrar.
+- [ ] Invitaciones, autoroles por reacción/botón y sugerencias.
 - [ ] Embeds e IA.
 - [ ] Anime y manga.
 
