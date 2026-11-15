@@ -4,7 +4,7 @@ import {
 } from 'discord.js';
 import { defineCommand, embed } from '../../lib/command.js';
 import { getModuleState } from '../../../services/guilds.js';
-import { createTicket, closeTicket, getTicketPanel } from '../../../services/tickets.js';
+import { createTicket, closeTicket, getTicketPanel, setTicketPanelMessage } from '../../../services/tickets.js';
 import { EconomyError } from '../../../services/economy.js';
 
 const MODULE = 'tickets';
@@ -22,7 +22,6 @@ export async function publishTicketPanel(client, guild, panel) {
   if (panel.messageId) msg = await channel.messages.fetch(panel.messageId).catch(() => null);
   if (msg) await msg.edit({ embeds: [e], components: [row] });
   else msg = await channel.send({ embeds: [e], components: [row] });
-  const { setTicketPanelMessage } = await import('../../../services/tickets.js');
   await setTicketPanelMessage(guild.id, panel.id, msg.id);
   return msg;
 }
@@ -75,7 +74,8 @@ async function closeFromInteraction(interaction, channelId) {
   const owner = channel.topic.match(/ticket-owner:(\d{17,20})/)?.[1];
   const panelId = Number(channel.topic.match(/ticket-panel:(\d+)/)?.[1]);
   const panel = Number.isSafeInteger(panelId) ? await getTicketPanel(panelId, interaction.guild.id) : null;
-  const roleId = panel?.supportRoleId;
+  const { config: moduleConfig } = await getModuleState(interaction.guild.id, MODULE);
+  const roleId = panel?.supportRoleId || moduleConfig.supportRoleId;
   const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
   const isStaff = roleId && member?.roles.cache.has(roleId);
   if (owner !== interaction.user.id && !isStaff && !interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels))
