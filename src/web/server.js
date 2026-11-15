@@ -15,6 +15,7 @@ const pub = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 
 
 export function createServer(client) {
   const app = express();
+  app.set('discordClient', client);
   app.set('trust proxy', 1); // Render está detrás de un proxy
   app.use(helmet({ contentSecurityPolicy: { directives: {
     defaultSrc: ["'self'"], imgSrc: ["'self'", 'data:', 'https://cdn.discordapp.com'],
