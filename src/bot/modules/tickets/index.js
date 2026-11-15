@@ -130,6 +130,8 @@ export default {
         if (interaction.isButton()) {
           const [, action, id] = interaction.customId.split(':');
           if (action === 'open') {
+            const state = await getModuleState(interaction.guild.id, MODULE);
+            if (!state.enabled) return interaction.reply({ content: 'El sistema de tickets está desactivado.', ephemeral: true });
             const panel = await getTicketPanel(id, interaction.guild.id);
             if (!panel?.active) return interaction.reply({ content: 'Este panel ya no está disponible.', ephemeral: true });
             if (panel.formFields?.length) {
