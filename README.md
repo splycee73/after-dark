@@ -17,7 +17,7 @@ Un solo servicio Node.js (bot + API + dashboard) y PostgreSQL.
 - [x] Logs: mensajes editados/eliminados, miembros, canales y baneos.
 - [x] Alertas: picos de entradas y menciones masivas (detección y aviso, no bloqueo automático).
 - [ ] Moderación avanzada y whitelist.
-- [ ] Invitaciones, bienvenidas, despedidas, autoroles y sugerencias.
+- [x] Bienvenidas, despedidas y autorol automático al entrar.\n- [ ] Invitaciones, autoroles por reacción/botón y sugerencias.
 - [ ] Embeds e IA.
 - [ ] Anime y manga.
 
