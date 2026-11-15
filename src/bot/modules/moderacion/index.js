@@ -8,6 +8,12 @@ const requirePermission = (ctx, permission, label) => {
   if (!ctx.guild.members.me?.permissions.has(permission)) throw new EconomyError(`Al bot le falta el permiso **${label}**.`);
 };
 
+const assertHierarchy = (ctx, target) => {
+  if (ctx.user.id !== ctx.guild.ownerId && target.roles.highest.position >= ctx.member.roles.highest.position) {
+    throw new EconomyError('No puedes moderar a alguien con un rol igual o superior al tuyo.');
+  }
+};
+
 const ban = defineCommand({
   name: 'ban', description: 'Banea a un miembro del servidor', module: 'moderacion',
   options: [{ name: 'usuario', type: 'user', description: 'Miembro que será baneado', required: true },
@@ -16,7 +22,7 @@ const ban = defineCommand({
     requirePermission(ctx, PermissionFlagsBits.BanMembers, 'Banear miembros');
     const target = await ctx.guild.members.fetch(ctx.args.usuario.id).catch(() => null);
     if (!target) throw new EconomyError('Ese usuario no está en el servidor.');
-    if (!target.bannable) throw new EconomyError('No puedo banear a ese miembro por su jerarquía o permisos.');
+    assertHierarchy(ctx, target);\n    if (!target.bannable) throw new EconomyError('No puedo banear a ese miembro por la jerarquía del bot o sus permisos.');
     const reason = ctx.args.motivo || `Baneado por ${ctx.user.tag}`;
     await target.ban({ reason: reason.slice(0, 500), deleteMessageSeconds: 0 });
     await ctx.reply({ embeds: [embed('🔨 Miembro baneado', `**Usuario:** <@${target.id}>\n**Motivo:** ${reason}`)] });
@@ -31,7 +37,7 @@ const kick = defineCommand({
     requirePermission(ctx, PermissionFlagsBits.KickMembers, 'Expulsar miembros');
     const target = await ctx.guild.members.fetch(ctx.args.usuario.id).catch(() => null);
     if (!target) throw new EconomyError('Ese usuario no está en el servidor.');
-    if (!target.kickable) throw new EconomyError('No puedo expulsar a ese miembro por su jerarquía o permisos.');
+    assertHierarchy(ctx, target);\n    if (!target.kickable) throw new EconomyError('No puedo expulsar a ese miembro por la jerarquía del bot o sus permisos.');
     const reason = ctx.args.motivo || `Expulsado por ${ctx.user.tag}`;
     await target.kick(reason.slice(0, 500));
     await ctx.reply({ embeds: [embed('👢 Miembro expulsado', `**Usuario:** <@${target.id}>\n**Motivo:** ${reason}`)] });
@@ -48,7 +54,7 @@ const timeout = defineCommand({
     const minutes = ctx.args.minutos;
     if (minutes < 1 || minutes > 40320) throw new EconomyError('La duración debe ser de 1 a 40320 minutos.');
     const target = await ctx.guild.members.fetch(ctx.args.usuario.id).catch(() => null);
-    if (!target?.moderatable) throw new EconomyError('No puedo aplicar timeout a ese miembro.');
+    if (!target) throw new EconomyError('Ese usuario no está en el servidor.');\n    assertHierarchy(ctx, target);\n    if (!target.moderatable) throw new EconomyError('No puedo aplicar timeout a ese miembro por la jerarquía del bot o sus permisos.');
     await target.timeout(minutes * 60_000, (ctx.args.motivo || 'Sin motivo').slice(0, 500));
     await ctx.reply({ embeds: [embed('⏳ Timeout aplicado', `**Usuario:** <@${target.id}>\n**Duración:** ${minutes} minutos\n**Motivo:** ${ctx.args.motivo || 'Sin motivo'}`)] });
   },
