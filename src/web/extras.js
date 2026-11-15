@@ -4,6 +4,7 @@ import { audit } from '../services/guilds.js';
 import { EconomyError, credit, leaderboard, recentTransactions } from '../services/economy.js';
 import { listItems, createItem, updateItem, deleteItem } from '../services/store.js';
 import { getCounter, setCounter } from '../services/counter.js';
+import { listTickets, ticketCounts } from '../services/tickets.js';
 
 const wrap = (fn) => (req, res) => fn(req, res).catch((e) => {
   if (e instanceof EconomyError) return res.status(400).json({ error: e.message });
@@ -62,6 +63,12 @@ export function createGuildExtras() {
     await deleteItem(req.guild.id, req.params.itemId);
     await audit(req.guild.id, req.session.user.id, 'store.delete', { id: req.params.itemId });
     res.json({ ok: true });
+  }));
+
+  // --- Tickets ---
+  r.get('/tickets', wrap(async (req, res) => {
+    const [counts, tickets] = await Promise.all([ticketCounts(req.guild.id), listTickets(req.guild.id, 30)]);
+    res.json({ counts, tickets });
   }));
 
   // --- Contador ---
