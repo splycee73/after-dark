@@ -21,3 +21,18 @@ Un solo servicio Node.js (bot + API + dashboard) y una base PostgreSQL.
 
 ## Render
 Ver las instrucciones del chat. Opcional: `render.yaml` como Blueprint.
+
+
+## Variables de entorno
+
+Para desarrollo local, copia `.env.example` a `.env` y completa los datos reales. No subas nunca `.env` ni compartas el token del bot o el secreto OAuth.
+
+En Render configura `BASE_URL` con la URL pública del servicio (por ejemplo, `https://tu-servicio.onrender.com`) y registra exactamente `https://tu-servicio.onrender.com/auth/callback` como Redirect URI en el portal de Discord. Render puede crear la base de datos desde `render.yaml`; confirma que `DATABASE_URL` esté enlazada al servicio.
+
+## Intents de Discord
+
+En Discord Developer Portal → Bot → Privileged Gateway Intents, activa **Server Members Intent** y **Message Content Intent** para que funcionen las funciones que dependen de miembros y comandos con prefijo. El bot también solicita Guild Invites para futuras funciones de invitaciones. Concede en cada servidor únicamente los permisos que necesiten los módulos que habilites; evita dar Administrator si no es imprescindible.
+
+## Estado real de implementación
+
+El dashboard actualmente tiene funcionales los módulos Stats, Personalización, Economía, Store y Contador. Los demás apartados son marcadores de módulos pendientes y todavía no deben considerarse funciones operativas. Las siguientes etapas requieren implementar sus eventos, comandos, validaciones y controles desde el dashboard.
