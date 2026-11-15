@@ -156,16 +156,110 @@ async function economyExtras(g) {
 }
 
 
-async function ticketsExtras(g) {
-  const data = await api(`/guilds/${g.id}/tickets`);
-  return h('div', {},
-    h('h3', {}, 'Resumen de tickets'),
-    h('div', { class: 'stats' },
-      h('div', { class: 'glass stat' }, h('b', {}, fmt(data.counts.open)), h('span', {}, 'Abiertos ahora')),
-      h('div', { class: 'glass stat' }, h('b', {}, fmt(data.counts.total)), h('span', {}, 'Tickets registrados'))),
-    h('h3', {}, 'Actividad reciente'),
-    table(['Ticket', 'Canal', 'Usuario', 'Estado', 'Creado'], data.tickets.map((t) =>
-      [`#${t.id}`, h('a', { href: `https://discord.com/channels/${g.id}/${t.channelId}`, target: '_blank', rel: 'noopener' }, 'Abrir canal'), t.openerId, t.status === 'open' ? '🟢 Abierto' : '⚫ Cerrado', when(t.createdAt)])));
+async function ticketsExtras(g, { channels, roles }) {
+  const [data, panels, categories] = await Promise.all([
+    api(`/guilds/${g.id}/tickets`), api(`/guilds/${g.id}/tickets/panels`), api(`/guilds/${g.id}/ticket-categories`),
+  ]);
+  const box = h('div');
+  let editing = null;
+  const channelOptions = channels.map((x) => [x.id, '#' + x.name]);
+  const roleOptions = roles.map((x) => [x.id, '@' + x.name]);
+  const categoryOptions = categories.map((x) => [x.id, x.name]);
+  const fieldRows = h('div');
+  const addField = (f = {}) => {
+    const label = h('input', { maxlength: 45, placeholder: 'Pregunta (ej. ¿En qué podemos ayudarte?)', value: f.label || '' });
+    const placeholder = h('input', { maxlength: 100, placeholder: 'Texto de ayuda', value: f.placeholder || '' });
+    const style = h('select', {}, [['short','Respuesta corta'],['paragraph','Respuesta larga']].map(([v,n])=>h('option',{value:v,selected:(f.style||'short')===v},n)));
+    const required = h('input', { type: 'checkbox', class: 'sw' }); required.checked = f.required !== false;
+    const maxLength = h('input', { type: 'number', min: 1, max: 1000, value: f.maxLength || 300 });
+    const row = h('div', { class: 'glass', style: 'padding:12px;margin:8px 0;display:grid;gap:8px' },
+      h('div', { class: 'row' }, label, h('button', { class: 'btn ghost', onclick: () => row.remove() }, 'Quitar')),
+      placeholder, style, h('label', { class: 'chk' }, required, 'Obligatoria'), h('label', {}, 'Máximo de caracteres'), maxLength);
+    row.readField = () => ({ label: label.value.trim(), placeholder: placeholder.value.trim(), style: style.value, required: required.checked, maxLength: Number(maxLength.value) || 300 });
+    fieldRows.append(row);
+  };
+  const controls = {
+    name: h('input', { maxlength: 60, placeholder: 'Ej. Soporte general' }),
+    panelChannelId: selectOf(channelOptions, null, '— canal donde publicar —'),
+    categoryId: selectOf(categoryOptions, null, '— categoría de tickets —'),
+    supportRoleId: selectOf(roleOptions, null, '— rol de soporte —'),
+    panelTitle: h('input', { maxlength: 256 }), panelDescription: h('textarea', { rows: 3, maxlength: 4000 }),
+    buttonLabel: h('input', { maxlength: 80 }), buttonEmoji: h('input', { maxlength: 32, placeholder: 'Emoji opcional: 🎫' }),
+    color: h('input', { type: 'color' }),
+    welcomeTitle: h('input', { maxlength: 256 }), welcomeMessage: h('textarea', { rows: 4, maxlength: 3000 }),
+    closeMessage: h('textarea', { rows: 2, maxlength: 1000 }),
+    active: h('input', { type: 'checkbox', class: 'sw' }),
+  };
+  const defaults = { name:'Soporte general', panelTitle:'Centro de soporte', panelDescription:'¿Necesitas ayuda? Pulsa el botón para abrir un ticket privado.', buttonLabel:'Abrir ticket', color:'#8b5cf6', welcomeTitle:'🎫 Ticket abierto', welcomeMessage:'Hola {user}, gracias por contactar con el equipo de {server}. Describe tu consulta y te atenderemos pronto.', closeMessage:'🔒 Ticket cerrado por {user}.', active:true };
+  const setValues = (p = defaults) => {
+    for (const k of Object.keys(controls)) {
+      if (k === 'panelChannelId' || k === 'categoryId' || k === 'supportRoleId') controls[k].value = p[k] || '';
+      else if (controls[k].type === 'checkbox') controls[k].checked = p[k] !== false;
+      else controls[k].value = p[k] ?? '';
+    }
+    fieldRows.replaceChildren();
+    (p.formFields || []).forEach(addField);
+  };
+  const readValues = () => ({
+    ...Object.fromEntries(Object.entries(controls).map(([k, el]) => [k, el.type === 'checkbox' ? el.checked : el.value])),
+    categoryId: controls.categoryId.value || null, supportRoleId: controls.supportRoleId.value || null,
+    formFields: [...fieldRows.children].map((x) => x.readField()).filter((x) => x.label).slice(0,5),
+  });
+  const draw = () => {
+    box.replaceChildren(
+      h('h3', {}, '🎫 Paneles de tickets'),
+      h('p', { class: 'muted' }, 'Crea paneles distintos para soporte, reportes, compras o cualquier departamento. Cada panel puede tener su propio canal, categoría, equipo, mensaje y formulario.'),
+      panels.length ? table(['Panel','Canal','Estado','Acciones'], panels.map((p) => [
+        p.name, '#' + (channels.find((x) => x.id === p.panelChannelId)?.name || p.panelChannelId),
+        p.active ? '🟢 Activo' : '⚫ Pausado',
+        h('div', { class: 'row', style: 'margin:0' },
+          h('button', { class: 'btn ghost', onclick: () => { editing = p; setValues(p); draw(); } }, 'Editar'),
+          h('button', { class: 'btn ghost', onclick: async () => { try { await api(`/guilds/${g.id}/tickets/panels/${p.id}/publish`, { method:'POST', body:{} }); toast('Panel publicado en Discord'); } catch(e) { toast(e.message,'err'); } } }, 'Publicar'),
+          h('button', { class: 'btn ghost', onclick: async () => { if (!confirm(`¿Eliminar el panel "${p.name}"?`)) return; try { await api(`/guilds/${g.id}/tickets/panels/${p.id}`,{method:'DELETE'}); const i=panels.findIndex(x=>x.id===p.id); if(i>=0) panels.splice(i,1); editing=null; setValues(); draw(); toast('Panel eliminado'); } catch(e){toast(e.message,'err');} } }, '🗑'))
+      ])) : h('p', { class:'muted' }, 'Todavía no has creado paneles.'),
+      h('h3', {}, editing ? `Editando: ${editing.name}` : 'Crear panel'),
+      h('div', { class:'glass', style:'padding:14px;display:grid;gap:8px' },
+        h('label',{},'Nombre interno'), controls.name,
+        h('label',{},'Canal donde aparecerá el panel'), controls.panelChannelId,
+        h('label',{},'Categoría donde se crearán los tickets'), controls.categoryId,
+        h('label',{},'Rol que atenderá los tickets'), controls.supportRoleId,
+        h('h3',{},'Diseño del panel'),
+        h('label',{},'Título'), controls.panelTitle, h('label',{},'Descripción'), controls.panelDescription,
+        h('label',{},'Texto del botón'), controls.buttonLabel, h('label',{},'Emoji del botón'), controls.buttonEmoji,
+        h('label',{},'Color del embed'), controls.color,
+        h('h3',{},'Mensaje al abrir ticket'),
+        h('label',{},'Título de bienvenida'), controls.welcomeTitle,
+        h('label',{},'Mensaje de bienvenida'), controls.welcomeMessage,
+        h('p',{class:'muted'},'Variables: {user}, {username}, {server}, {ticket}.'),
+        h('label',{},'Mensaje al cerrar'), controls.closeMessage,
+        h('h3',{},'Formulario previo a abrir'),
+        h('p',{class:'muted'},'Hasta 5 preguntas. Si no agregas preguntas, el botón abrirá el ticket directamente.'),
+        fieldRows,
+        h('button',{class:'btn ghost',onclick:()=>{if(fieldRows.children.length>=5)return toast('Máximo 5 preguntas','err');addField();}},'+ Añadir pregunta'),
+        h('label',{class:'chk'},controls.active,'Panel activo'),
+        h('div',{class:'row',style:'margin-top:12px'},
+          h('button',{class:'btn',onclick:async()=>{
+            const body=readValues();
+            try {
+              const saved=await api(`/guilds/${g.id}/tickets/panels${editing?'/'+editing.id:''}`,{method:editing?'PUT':'POST',body});
+              if(editing){const ix=panels.findIndex(x=>x.id===editing.id);if(ix>=0)panels[ix]=saved;}else panels.push(saved);
+              editing=saved; toast('Configuración guardada'); draw();
+            } catch(e){toast(e.message,'err');}
+          }}, editing?'Guardar cambios':'Crear panel'),
+          h('button',{class:'btn ghost',onclick:()=>{editing=null;setValues();draw();}},'Nuevo / limpiar'),
+          editing?h('button',{class:'btn ghost',onclick:async()=>{try{await api(`/guilds/${g.id}/tickets/panels/${editing.id}/publish`,{method:'POST',body:{}});toast('Panel publicado en Discord');}catch(e){toast(e.message,'err');}}},'Publicar en Discord'):null
+        )
+      ),
+      h('h3', {}, 'Resumen de tickets'),
+      h('div', { class: 'stats' },
+        h('div', { class: 'glass stat' }, h('b', {}, fmt(data.counts.open)), h('span', {}, 'Abiertos ahora')),
+        h('div', { class: 'glass stat' }, h('b', {}, fmt(data.counts.total)), h('span', {}, 'Tickets registrados'))),
+      h('h3', {}, 'Actividad reciente'),
+      table(['Ticket','Canal','Usuario','Estado','Creado'],data.tickets.map(t=>[`#${t.id}`,h('a',{href:`https://discord.com/channels/${g.id}/${t.channelId}`,target:'_blank',rel:'noopener'},'Abrir canal'),t.openerId,t.status==='open'?'🟢 Abierto':'⚫ Cerrado',when(t.createdAt)]))
+    );
+  };
+  setValues(); draw();
+  return box;
 }
 
 async function storeExtras(g, { roles }) {
