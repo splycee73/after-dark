@@ -1,4 +1,4 @@
-// Fuente única de verdad de la configuración por módulo: la usan el bot, la API (validación) y el dashboard (formularios).
+// Fuente única de configuración por módulo: API valida y dashboard genera sus formularios.
 const int = (key, label, def, min, max, extra = {}) => ({ key, label, type: 'int', def, min, max, ...extra });
 const bool = (key, label, def, extra = {}) => ({ key, label, type: 'bool', def, ...extra });
 const str = (key, label, def, max, extra = {}) => ({ key, label, type: 'string', def, max, ...extra });
@@ -32,15 +32,34 @@ export const SCHEMAS = {
     bool('allowSameUser', 'Permitir que la misma persona cuente dos veces seguidas', false),
     bool('deleteInvalid', 'Borrar mensajes que no sean números', false),
     bool('resetOnError', 'Reiniciar el contador al fallar', true),
-    str('successEmoji', 'Reacción de acierto (vacío = ninguna)', '✅', 16, { section: 'Mensajes' }),
-    str('successMessage', 'Mensaje de acierto (vacío = solo reacción)', '', 200),
-    str('errorMessage', 'Mensaje de error · {user} {number} {expected} {start} {reason}',
-      '❌ {user} arruinó el conteo en **{number}** ({reason}). Seguía el **{expected}**. ¡Volvemos a empezar desde **{start}**!', 300, { required: true }),
+    str('successEmoji', 'Reacción de acierto', '✅', 16, { section: 'Mensajes' }),
+    str('successMessage', 'Mensaje de acierto', '', 200),
+    str('errorMessage', 'Mensaje de error · {user} {number} {expected} {start} {reason}', '❌ {user} arruinó el conteo en **{number}** ({reason}). Seguía el **{expected}**. ¡Volvemos a empezar desde **{start}**!', 300, { required: true }),
+  ],
+  tickets: [
+    ref('channel', 'categoryId', 'Categoría donde crear tickets', { section: 'Configuración' }),
+    ref('role', 'supportRoleId', 'Rol de soporte'),
+  ],
+  logs: [
+    ref('channel', 'channelId', 'Canal donde enviar registros', { section: 'Eventos' }),
+    bool('messageDelete', 'Mensajes eliminados', { value: true }),
+    bool('messageUpdate', 'Mensajes editados', true),
+    bool('memberAdd', 'Entradas de miembros', true),
+    bool('memberRemove', 'Salidas de miembros', true),
+    bool('channelCreate', 'Canales creados', true),
+    bool('channelDelete', 'Canales eliminados', true),
+    bool('guildBanAdd', 'Baneos', true),
+  ],
+  alertas: [
+    ref('channel', 'channelId', 'Canal de alertas', { section: 'Anti-raid básico' }),
+    int('joinWindowSeconds', 'Ventana de tiempo (segundos)', 15, 5, 300),
+    int('joinThreshold', 'Entradas para alertar', 8, 2, 100),
+    bool('massMentionEnabled', 'Detectar menciones masivas', true, { section: 'Menciones' }),
+    int('mentionThreshold', 'Menciones para alertar', 8, 2, 100),
   ],
 };
 
-const SNOWFLAKE = /^\d{17,20}$/;
-
+const SNOWFLAKE = /^\\d{17,20}$/;
 export function normalizeConfig(key, input, guild) {
   const schema = SCHEMAS[key];
   if (!schema) return input ?? {};
@@ -48,8 +67,7 @@ export function normalizeConfig(key, input, guild) {
   for (const f of schema) {
     let v = input?.[f.key];
     if (f.type === 'int') {
-      v = v !== undefined && v !== null && v !== '' && Number.isFinite(Number(v))
-        ? Math.min(f.max, Math.max(f.min, Math.trunc(Number(v)))) : f.def;
+      v = v !== undefined && v !== null && v !== '' && Number.isFinite(Number(v)) ? Math.min(f.max, Math.max(f.min, Math.trunc(Number(v)))) : f.def;
     } else if (f.type === 'bool') v = typeof v === 'boolean' ? v : f.def;
     else if (f.type === 'string') {
       v = typeof v === 'string' ? v.trim().slice(0, f.max) : f.def;
