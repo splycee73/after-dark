@@ -8,7 +8,7 @@ export const MODULES = [
   { key: 'tickets', name: 'Tickets', icon: '🎫', stage: 3, implemented: true },
   { key: 'logs', name: 'Logs', icon: '📜', stage: 3, implemented: true },
   { key: 'alertas', name: 'Alertas', icon: '🔔', stage: 3, implemented: true },
-  { key: 'moderacion', name: 'Moderación', icon: '🛡️', stage: 4, implemented: false },
+  { key: 'moderacion', name: 'Moderación', icon: '🛡️', stage: 4, implemented: true },
   { key: 'whitelist', name: 'Whitelist', icon: '✅', stage: 4, implemented: false },
   { key: 'invites', name: 'Invites', icon: '📨', stage: 4, implemented: false },
   { key: 'bienvenidas', name: 'Bienvenidas', icon: '👋', stage: 4, implemented: true },
