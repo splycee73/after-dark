@@ -1,4 +1,4 @@
-import { Events, PermissionFlagsBits } from 'discord.js';
+import { PermissionFlagsBits, ChannelType } from 'discord.js';
 import { defineCommand, embed } from '../../lib/command.js';
 import { getModuleState } from '../../../services/guilds.js';
 import { createTicket, closeTicket } from '../../../services/tickets.js';
@@ -24,7 +24,7 @@ const open = defineCommand({
     }
     const channel = await ctx.guild.channels.create({
       name: `ticket-${ctx.user.username.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 18) || 'usuario'}`,
-      type: 0,
+      type: ChannelType.GuildText,
       topic: `ticket-owner:${ctx.user.id};ticket-status:open`,
       permissionOverwrites: perms,
       reason: `Ticket abierto por ${ctx.user.tag}`,
