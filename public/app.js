@@ -125,7 +125,8 @@ async function modulePanel(m, g, content) {
     else if (f.type === 'int') el = h('input', { type: 'number', min: f.min, max: f.max, value: val });
     else el = f.max >= 150 ? h('textarea', { rows: 3, maxlength: f.max }, val ?? '') : h('input', { value: val ?? '', maxlength: f.max });
     inputs[f.key] = [f, el];
-    form.append(f.type === 'bool' ? h('label', { class: 'chk' }, el, f.label) : [h('label', {}, f.label), el]);
+    if (f.type === 'bool') form.append(h('label', { class: 'chk' }, el, f.label));
+    else { form.append(h('label', {}, f.label)); form.append(el); }
   }
   const read = () => Object.fromEntries(Object.entries(inputs).map(([k, [f, el]]) =>
     [k, f.type === 'bool' ? el.checked : f.type === 'int' ? Number(el.value) : f.type === 'string' ? el.value : (el.value || null)]));
