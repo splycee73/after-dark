@@ -106,14 +106,14 @@ export function createGuildExtras() {
     res.json(saved);
   }));
   r.put('/tickets/panels/:panelId', wrap(async (req, res) => {
-    if (!/^\\d+$/.test(req.params.panelId)) throw new EconomyError('ID de panel inválido.');
+    if (!/^\d+$/.test(req.params.panelId)) throw new EconomyError('ID de panel inválido.');
     const saved = await saveTicketPanel(req.guild.id, validatePanel(req.body, req.guild), req.params.panelId);
     if (!saved) throw new EconomyError('Panel no encontrado.');
     await audit(req.guild.id, req.session.user.id, 'tickets.panel.update', { panelId: saved.id });
     res.json(saved);
   }));
   r.delete('/tickets/panels/:panelId', wrap(async (req, res) => {
-    if (!/^\\d+$/.test(req.params.panelId)) throw new EconomyError('ID de panel inválido.');
+    if (!/^\d+$/.test(req.params.panelId)) throw new EconomyError('ID de panel inválido.');
     if (!await deleteTicketPanel(req.guild.id, req.params.panelId)) throw new EconomyError('Panel no encontrado.');
     await audit(req.guild.id, req.session.user.id, 'tickets.panel.delete', { panelId: req.params.panelId });
     res.json({ ok: true });
