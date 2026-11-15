@@ -56,6 +56,17 @@ export const SCHEMAS = {
     bool('massMentionEnabled', 'Detectar menciones masivas', true, { section: 'Menciones' }),
     int('mentionThreshold', 'Menciones para alertar', 8, 2, 100),
   ],
+  bienvenidas: [
+    ref('channel', 'channelId', 'Canal de bienvenida', { section: 'Mensaje' }),
+    str('message', 'Texto · {user} {username} {server} {count}', '✦ ¡Bienvenido/a {user} a **{server}**! Ya somos **{count}** miembros.', 1800),
+  ],
+  despedidas: [
+    ref('channel', 'channelId', 'Canal de despedidas', { section: 'Mensaje' }),
+    str('message', 'Texto · {username} {server} {count}', '「{username}」 ha abandonado **{server}**. Ahora somos {count}.', 1800),
+  ],
+  autorol_bienvenida: [
+    ref('role', 'roleId', 'Rol que se asigna al entrar', { section: 'Asignación' }),
+  ],
 };    ref('role', 'supportRoleId', 'Rol de soporte'),
   ],
   logs: [
