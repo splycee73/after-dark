@@ -138,7 +138,7 @@ async function modulePanel(m, g, content) {
   content.replaceChildren(h('div', { class: 'row', style: 'justify-content:space-between;align-items:center' },
     h('h2', { style: 'margin:0' }, `${m.icon} ${m.name}`), h('label', { class: 'chk', style: 'margin:0' }, sw, 'Activado')),
     form, h('div', { style: 'margin-top:18px' }, save));
-  const extra = { economia: economyExtras, store: storeExtras, contador: counterExtras }[m.key];
+  const extra = { economia: economyExtras, store: storeExtras, contador: counterExtras, tickets: ticketsExtras }[m.key];
   if (extra) content.append(await extra(g, { channels, roles, m }));
 }
 
@@ -152,6 +152,19 @@ async function economyExtras(g) {
       catch (e) { toast(e.message, 'err'); }
     } }, 'Aplicar')),
     h('h3', {}, '📒 Últimas transacciones'), table(['Fecha', 'Usuario', 'Tipo', 'Monto', 'Nota'], tx.map((t) => [when(t.at), t.name, t.type, fmt(t.amount), t.note ?? ''])));
+}
+
+
+async function ticketsExtras(g) {
+  const data = await api(`/guilds/${g.id}/tickets`);
+  return h('div', {},
+    h('h3', {}, 'Resumen de tickets'),
+    h('div', { class: 'stats' },
+      h('div', { class: 'glass stat' }, h('b', {}, fmt(data.counts.open)), h('span', {}, 'Abiertos ahora')),
+      h('div', { class: 'glass stat' }, h('b', {}, fmt(data.counts.total)), h('span', {}, 'Tickets registrados'))),
+    h('h3', {}, 'Actividad reciente'),
+    table(['Ticket', 'Canal', 'Usuario', 'Estado', 'Creado'], data.tickets.map((t) =>
+      [`#${t.id}`, h('a', { href: `https://discord.com/channels/${g.id}/${t.channelId}`, target: '_blank', rel: 'noopener' }, 'Abrir canal'), t.openerId, t.status === 'open' ? '🟢 Abierto' : '⚫ Cerrado', when(t.createdAt)])));
 }
 
 async function storeExtras(g, { roles }) {
