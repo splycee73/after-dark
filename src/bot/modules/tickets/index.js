@@ -76,7 +76,8 @@ async function closeFromInteraction(interaction, channelId) {
   const panelId = Number(channel.topic.match(/ticket-panel:(\d+)/)?.[1]);
   const panel = Number.isSafeInteger(panelId) ? await getTicketPanel(panelId, interaction.guild.id) : null;
   const roleId = panel?.supportRoleId;
-  const isStaff = roleId && interaction.member.roles?.cache?.has(roleId);
+  const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+  const isStaff = roleId && member?.roles.cache.has(roleId);
   if (owner !== interaction.user.id && !isStaff && !interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels))
     return interaction.reply({ content: 'Solo quien abrió el ticket o el equipo de soporte puede cerrarlo.', ephemeral: true });
   const row = await closeTicket(channel.id, interaction.user.id);
