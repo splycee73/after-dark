@@ -47,7 +47,7 @@ export function defineCommand({ name, description, module, aliases = [], options
         args[o.name] = o.type === 'user' ? i.options.getUser(o.name) : o.type === 'int' ? i.options.getInteger(o.name) : i.options.getString(o.name);
       }
       await handle({
-        client: i.client, guild: i.guild, user: i.user, member: i.member, args,
+        client: i.client, guild: i.guild, channel: i.channel, user: i.user, member: i.member, args,
         reply: (p) => (i.replied || i.deferred ? i.followUp(p) : i.reply(p)),
       });
     },
@@ -64,7 +64,7 @@ export function defineCommand({ name, description, module, aliases = [], options
         }
       }
       await handle({
-        client: m.client, guild: m.guild, user: m.author, member: m.member, args,
+        client: m.client, guild: m.guild, channel: m.channel, user: m.author, member: m.member, args,
         reply: ({ ephemeral, ...p }) => m.reply({ ...p, allowedMentions: { repliedUser: false, parse: [] } }),
       });
     },
