@@ -23,7 +23,7 @@ async function names(guild, ids) {
 function validatePanel(body, guild) {
   const b = body ?? {};
   const clean = (v, max, fallback = '') => typeof v === 'string' ? v.trim().slice(0, max) : fallback;
-  const id = (v, coll) => typeof v === 'string' && /^\\d{17,20}$/.test(v) && coll.cache.has(v) ? v : null;
+  const id = (v, coll) => typeof v === 'string' && /^\d{17,20}$/.test(v) && coll.cache.has(v) ? v : null;
   const fields = Array.isArray(b.formFields) ? b.formFields.slice(0, 5).map((f, i) => ({
     label: clean(f?.label, 45, `Pregunta ${i + 1}`) || `Pregunta ${i + 1}`,
     placeholder: clean(f?.placeholder, 100), style: f?.style === 'paragraph' ? 'paragraph' : 'short',
