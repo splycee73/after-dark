@@ -104,8 +104,11 @@ const close = defineCommand({
     const topic = ctx.channel.topic ?? '';
     const owner = topic.match(/ticket-owner:(\d{17,20})/)?.[1];
     if (!owner || !topic.includes('ticket-status:open')) throw new EconomyError('Este canal no es un ticket abierto.');
+    const panelId = Number(topic.match(/ticket-panel:(\d+)/)?.[1]);
+    const panel = Number.isSafeInteger(panelId) ? await getTicketPanel(panelId, ctx.guild.id) : null;
     const { config: cfg } = await getModuleState(ctx.guild.id, MODULE);
-    const isStaff = cfg.supportRoleId && ctx.member.roles.cache.has(cfg.supportRoleId);
+    const supportRoleId = panel?.supportRoleId || cfg.supportRoleId;
+    const isStaff = supportRoleId && ctx.member.roles.cache.has(supportRoleId);
     if (owner !== ctx.user.id && !isStaff && !ctx.member.permissions.has(PermissionFlagsBits.ManageChannels))
       throw new EconomyError('Solo quien abrió el ticket o el equipo de soporte puede cerrarlo.');
     const row = await closeTicket(ctx.channel.id, ctx.user.id);
