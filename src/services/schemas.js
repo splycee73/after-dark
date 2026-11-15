@@ -68,7 +68,7 @@ export const SCHEMAS = {
     ref('role', 'roleId', 'Rol que se asigna al entrar', { section: 'Asignación' }),
   ],
 };
-const SNOWFLAKE = /^\\d{17,20}$/;
+const SNOWFLAKE = /^\d{17,20}$/;
 export function normalizeConfig(key, input, guild) {
   const schema = SCHEMAS[key];
   if (!schema) return input ?? {};
