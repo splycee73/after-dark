@@ -67,27 +67,7 @@ export const SCHEMAS = {
   autorol_bienvenida: [
     ref('role', 'roleId', 'Rol que se asigna al entrar', { section: 'Asignación' }),
   ],
-};    ref('role', 'supportRoleId', 'Rol de soporte'),
-  ],
-  logs: [
-    ref('channel', 'channelId', 'Canal donde enviar registros', { section: 'Eventos' }),
-    bool('messageDelete', 'Mensajes eliminados', true),
-    bool('messageUpdate', 'Mensajes editados', true),
-    bool('memberAdd', 'Entradas de miembros', true),
-    bool('memberRemove', 'Salidas de miembros', true),
-    bool('channelCreate', 'Canales creados', true),
-    bool('channelDelete', 'Canales eliminados', true),
-    bool('guildBanAdd', 'Baneos', true),
-  ],
-  alertas: [
-    ref('channel', 'channelId', 'Canal de alertas', { section: 'Anti-raid básico' }),
-    int('joinWindowSeconds', 'Ventana de tiempo (segundos)', 15, 5, 300),
-    int('joinThreshold', 'Entradas para alertar', 8, 2, 100),
-    bool('massMentionEnabled', 'Detectar menciones masivas', true, { section: 'Menciones' }),
-    int('mentionThreshold', 'Menciones para alertar', 8, 2, 100),
-  ],
 };
-
 const SNOWFLAKE = /^\\d{17,20}$/;
 export function normalizeConfig(key, input, guild) {
   const schema = SCHEMAS[key];
