@@ -11,7 +11,7 @@ async function viaGemini({ model, system, messages, maxTokens }) {
   }
 
   const requestedModel = typeof model === 'string' ? model : '';
-  const m = requestedModel.startsWith('gemini') ? requestedModel : 'gemini-2.5-flash';
+  const m = requestedModel.startsWith('gemini') ? requestedModel : 'gemini-3.8-flash';
 
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent`, {
     method: 'POST',
