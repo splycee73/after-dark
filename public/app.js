@@ -30,10 +30,22 @@ const guildIcon = (g) => h('div', { class: 'gicon' },
 let me;
 
 function loginView() {
-  mount(h('div', { class: 'center' }, h('div', { class: 'glass login fade' },
-    h('div', { class: 'logo' }, 'AFTER DARK'),
-    h('p', { class: 'sub' }, 'Panel de control · AFTER ON TOP'),
-    h('a', { class: 'btn', href: '/auth/login' }, 'Iniciar sesión con Discord'))));
+  mount(h('div', { class: 'auth-shell fade' },
+    h('section', { class: 'auth-copy' },
+      h('div', { class: 'logo' }, 'AFTER DARK'),
+      h('p', { class: 'auth-kicker' }, 'CONTROL CENTER · DISCORD'),
+      h('h1', {}, 'Tu comunidad.\nTus reglas.\nUn solo lugar.'),
+      h('p', { class: 'auth-description' }, 'Administra tus servidores, automatiza tareas y personaliza cada módulo desde un panel diseñado para tenerlo todo bajo control.'),
+      h('div', { class: 'auth-points' },
+        h('span', {}, '✦ Gestión centralizada'),
+        h('span', {}, '✦ Configuración por servidor'),
+        h('span', {}, '✦ Herramientas de moderación y comunidad'))),
+    h('div', { class: 'glass auth-card' },
+      h('div', { class: 'auth-mark' }, 'AD'),
+      h('h2', {}, 'Bienvenido a AFTER DARK'),
+      h('p', { class: 'muted' }, 'Conecta tu cuenta de Discord para elegir y administrar tus servidores.'),
+      h('a', { class: 'btn auth-login', href: '/auth/login' }, 'Continuar con Discord'),
+      h('p', { class: 'auth-footnote' }, 'La autorización se realiza mediante Discord OAuth2. Tu contraseña nunca se comparte con AFTER DARK.'))));
 }
 
 function topbar() {
@@ -46,8 +58,8 @@ function topbar() {
 async function guildsView() {
   const guilds = await api('/guilds');
   mount(topbar(), h('div', { class: 'wrap fade' },
-    h('h2', {}, 'Tus servidores'),
-    guilds.length ? h('div', { class: 'grid' }, guilds.map((g) => h('div', { class: `glass card ${g.botPresent ? 'click' : ''}`, onclick: g.botPresent ? () => guildView(g.id) : null },
+    h('div',{class:'guild-heading'},h('div',{},h('p',{class:'auth-kicker'},'WORKSPACE · SERVIDORES'),h('h2',{},'Tus servidores'),h('p',{class:'muted'},'Selecciona una comunidad para abrir su centro de control.')),h('span',{class:'guild-count'},`${guilds.length} disponibles`)),
+    guilds.length ? h('div', { class: 'grid' }, guilds.map((g) => h('div', { class: `glass card guild-card ${g.botPresent ? 'click' : ''}`, onclick: g.botPresent ? () => guildView(g.id) : null },
       guildIcon(g), h('div', {}, g.name), h('div', { style: 'margin-top:12px' },
         g.botPresent ? h('span', { class: 'muted' }, 'Gestionar →') : h('a', { class: 'btn ghost', href: g.inviteUrl, target: '_blank', rel: 'noopener' }, 'Invitar bot')))))
       : h('p', { class: 'muted' }, 'No administras ningún servidor.')));
