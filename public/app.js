@@ -361,7 +361,7 @@ const autorolesExtras = (g, { lists }) => crudPanel(g, lists, {
     { key: 'name', label: 'Nombre interno', type: 'string', max: 60 }, { key: 'channelId', label: 'Canal donde se publica', type: 'channel' },
     { key: 'title', label: 'Título', type: 'string', max: 256 }, { key: 'description', label: 'Descripción', type: 'string', max: 1500 },
     { key: 'color', label: 'Color', type: 'color', def: '#8b5cf6' }, { key: 'exclusive', label: 'Solo un rol a la vez', type: 'bool' },
-    { key: 'roleIds', label: 'Roles del panel (máx. 25)', type: 'roles' },
+    { key: 'roleIds', label: 'Roles que los miembros pueden autoasignarse (máx. 25)', type: 'assignableRoles' },
   ],
 });
 async function suggestionsExtras(g) {
