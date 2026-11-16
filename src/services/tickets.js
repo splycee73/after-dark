@@ -173,9 +173,19 @@ export async function claimTicket({ ticket, member }) {
   const { rowCount } = await query("UPDATE tickets SET claimed_by=$2, claimed_at=now() WHERE id=$1 AND claimed_by IS NULL AND status='open'", [ticket.id, member.id]);
   if (!rowCount) throw new EconomyError('Este ticket ya fue reclamado o está cerrado.');
   const { rows: [t] } = await query('SELECT t.*, p.support_role_ids AS panel_roles, c.support_role_ids AS cat_roles FROM tickets t LEFT JOIN ticket_panels p ON p.id=t.panel_id LEFT JOIN ticket_categories c ON c.id=t.category_id WHERE t.id=$1', [ticket.id]);
+  const channel = member.guild.channels.cache.get(t.channel_id);
+  if (!channel) {
+    await query('UPDATE tickets SET claimed_by=NULL, claimed_at=NULL WHERE id=$1 AND claimed_by=$2', [ticket.id, member.id]);
+    throw new EconomyError('No encontré el canal del ticket.');
+  }
   const roles = [...new Set([...(t.panel_roles ?? []), ...(t.cat_roles ?? [])])];
-  for (const roleId of roles) await member.guild.channels.cache.get(t.channel_id)?.permissionOverwrites.edit(roleId, { ViewChannel: false }).catch(() => {});
-  await member.guild.channels.cache.get(t.channel_id)?.permissionOverwrites.edit(member.id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true, AttachFiles: true }).catch(() => {});
+  try {
+    for (const roleId of roles) await channel.permissionOverwrites.edit(roleId, { ViewChannel: false });
+    await channel.permissionOverwrites.edit(member.id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true, AttachFiles: true });
+  } catch {
+    await query('UPDATE tickets SET claimed_by=NULL, claimed_at=NULL WHERE id=$1 AND claimed_by=$2', [ticket.id, member.id]);
+    throw new EconomyError('No pude restringir el acceso al reclamar. Revisa que el bot pueda administrar los permisos del canal.');
+  }
 }
 
 async function buildTranscript(channel, t) {
