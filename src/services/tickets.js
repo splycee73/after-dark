@@ -26,7 +26,7 @@ export const categories = entity({
   ],
 });
 
-const slug = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 20) || 'ticket';
+const categoriesName = (cats, id) => cats.find((x) => String(x.id) === String(id))?.name ?? 'Categoría';\nconst slug = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 20) || 'ticket';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const EMOJI = /^(\p{Extended_Pictographic}|<a?:\w+:\d+>)/u;
 
@@ -50,7 +50,7 @@ const cleanPanel = (body = {}, guild) => {
   const channelId = body.channelId || null;
   if (channelId && (!SNOW.test(channelId) || !guild.channels.cache.has(channelId) || !guild.channels.cache.get(channelId).isTextBased())) throw new EconomyError('El canal del panel no es válido.');
   const color = /^#[0-9a-f]{6}$/i.test(body.color ?? '') ? body.color : '#8b5cf6';
-  const components = Array.isArray(body.components) ? body.components.slice(0, 25).map((x) => ({
+  const components = Array.isArray(body.components) ? body.components.slice(0, 25).filter((x) => x && typeof x === 'object').map((x) => ({
     type: x.type === 'button' ? 'button' : 'category',
     label: String(x.label ?? '').trim().slice(0, 80),
     emoji: String(x.emoji ?? '').slice(0, 60),
@@ -98,7 +98,7 @@ export async function sendPanelById(guild, id) {
   const ch = p.channel_id && guild.channels.cache.get(p.channel_id);
   if (!ch?.isTextBased()) throw new EconomyError('Selecciona un canal válido para este panel.');
   const cats = (await categories.list(guild.id)).filter((x) => x.enabled && (!x.panelId || x.panelId === String(id)));
-  const components = p.components?.length ? p.components : cats.map((x) => ({ type: 'category', label: x.buttonLabel || x.name, emoji: x.emoji, categoryId: x.id, style: x.buttonStyle || 'Primary' }));
+  if (!cats.length) throw new EconomyError('Crea al menos una categoría activa para este panel.');\n  const components = p.components?.length ? p.components : cats.map((x) => ({ type: 'category', label: x.parentCategoryId ? `${categoriesName(cats, x.parentCategoryId)} / ${x.buttonLabel || x.name}` : (x.buttonLabel || x.name), emoji: x.emoji, categoryId: x.id, style: x.buttonStyle || 'Primary' }));
   const rows = [];
   for (let i=0;i<Math.min(25,components.length);i+=5) rows.push(new ActionRowBuilder().addComponents(components.slice(i,i+5).map((x) => {
     const b = new ButtonBuilder().setCustomId(`tk:open:${x.categoryId}:${id}`).setLabel(x.label).setStyle(ButtonStyle[x.style] ?? ButtonStyle.Primary);
