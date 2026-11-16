@@ -115,7 +115,8 @@ async function closeFromInteraction(interaction, channelId) {
   const { config: moduleConfig } = await getModuleState(interaction.guild.id, MODULE);
   const roleId = panel?.supportRoleId || moduleConfig.supportRoleId;
   const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
-  const isStaff = roleId && member?.roles.cache.has(roleId);
+  const staffRoleIds = [roleId, ...(panel?.panelCategories ?? []).flatMap(x => x.supportRoleIds ?? [])].filter(Boolean);
+  const isStaff = member && staffRoleIds.some(r => member.roles.cache.has(r));
   if (owner !== interaction.user.id && !isStaff && !interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels))
     return interaction.reply({ content: 'Solo quien abrió el ticket o el equipo de soporte puede cerrarlo.', ephemeral: true });
   const row = await closeTicket(channel.id, interaction.user.id);
@@ -146,7 +147,8 @@ const close = defineCommand({
     const panel = Number.isSafeInteger(panelId) ? await getTicketPanel(panelId, ctx.guild.id) : null;
     const { config: cfg } = await getModuleState(ctx.guild.id, MODULE);
     const supportRoleId = panel?.supportRoleId || cfg.supportRoleId;
-    const isStaff = supportRoleId && ctx.member.roles.cache.has(supportRoleId);
+    const staffRoleIds = [supportRoleId, ...(panel?.panelCategories ?? []).flatMap(x => x.supportRoleIds ?? [])].filter(Boolean);
+    const isStaff = staffRoleIds.some(r => ctx.member.roles.cache.has(r));
     if (owner !== ctx.user.id && !isStaff && !ctx.member.permissions.has(PermissionFlagsBits.ManageChannels))
       throw new EconomyError('Solo quien abrió el ticket o el equipo de soporte puede cerrarlo.');
     const row = await closeTicket(ctx.channel.id, ctx.user.id);
@@ -289,7 +291,7 @@ export default {
           const state = await getModuleState(interaction.guild.id, MODULE);
           const roleId = panel?.supportRoleId || state.config.supportRoleId;
           const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
-          if (!member || (!member.permissions.has(PermissionFlagsBits.ManageChannels) && !(roleId && member.roles.cache.has(roleId)))) return interaction.reply({ content: 'Sin permisos de soporte.', ephemeral: true });
+          if (!member || (!member.permissions.has(PermissionFlagsBits.ManageChannels) && ![roleId, ...(panel?.panelCategories ?? []).flatMap(x => x.supportRoleIds ?? [])].filter(Boolean).some(r => member.roles.cache.has(r)))) return interaction.reply({ content: 'Sin permisos de soporte.', ephemeral: true });
           const userId = interaction.fields.getTextInputValue('userId').trim();
           if (!/^\d{17,20}$/.test(userId)) return interaction.reply({ content: 'ID de Discord inválido.', ephemeral: true });
           const target = await interaction.guild.members.fetch(userId).catch(() => null);
