@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { ChannelType } from 'discord.js';
 import { logger } from '../lib/logger.js';
 import { audit } from '../services/guilds.js';
 import { EconomyError, credit, leaderboard, recentTransactions } from '../services/economy.js';
@@ -31,7 +32,7 @@ function validatePanel(body, guild) {
   })) : [];
   const panelChannelId = id(b.panelChannelId, guild.channels);
   if (!clean(b.name, 60) || !panelChannelId) throw new EconomyError('El panel necesita un nombre y un canal de texto válido.');
-  if (b.categoryId && (!id(b.categoryId, guild.channels) || guild.channels.cache.get(b.categoryId)?.type !== 4)) throw new EconomyError('La categoría de tickets debe ser una categoría de Discord válida.');
+  if (b.categoryId && (!id(b.categoryId, guild.channels) || guild.channels.cache.get(b.categoryId)?.type !== ChannelType.GuildCategory)) throw new EconomyError('La categoría de tickets debe ser una categoría de Discord válida.');
   if (b.supportRoleId && !id(b.supportRoleId, guild.roles)) throw new EconomyError('Rol de soporte inválido.');
   const panelCategories = Array.isArray(b.panelCategories) ? b.panelCategories.slice(0, 25).map((cat, i) => {
     if (cat?.channelId && (!id(cat.channelId, guild.channels) || guild.channels.cache.get(cat.channelId)?.type !== 4))
