@@ -26,7 +26,8 @@ export const categories = entity({
   ],
 });
 
-const categoriesName = (cats, id) => cats.find((x) => String(x.id) === String(id))?.name ?? 'Categoría';\nconst slug = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 20) || 'ticket';
+const categoriesName = (cats, id) => cats.find((x) => String(x.id) === String(id))?.name ?? 'Categoría';
+const slug = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 20) || 'ticket';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const EMOJI = /^(\p{Extended_Pictographic}|<a?:\w+:\d+>)/u;
 
@@ -40,7 +41,7 @@ export async function getByChannel(channelId) {
 }
 
 
-const SNOW = /^\\d{17,20}$/;
+const SNOW = /^\d{17,20}$/;
 const PANEL_STYLES = new Set(['Primary', 'Secondary', 'Success', 'Danger']);
 const cleanPanel = (body = {}, guild) => {
   const name = String(body.name ?? '').trim().slice(0, 80);
@@ -55,7 +56,7 @@ const cleanPanel = (body = {}, guild) => {
     label: String(x.label ?? '').trim().slice(0, 80),
     emoji: String(x.emoji ?? '').slice(0, 60),
     description: String(x.description ?? '').slice(0, 100),
-    categoryId: /^\\d+$/.test(String(x.categoryId ?? '')) ? String(x.categoryId) : null,
+    categoryId: /^\d+$/.test(String(x.categoryId ?? '')) ? String(x.categoryId) : null,
     style: PANEL_STYLES.has(x.style) ? x.style : 'Primary',
   })).filter((x) => x.label) : [];
   return {
