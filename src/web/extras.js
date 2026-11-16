@@ -31,9 +31,11 @@ function validatePanel(body, guild) {
   })) : [];
   const panelChannelId = id(b.panelChannelId, guild.channels);
   if (!clean(b.name, 60) || !panelChannelId) throw new EconomyError('El panel necesita un nombre y un canal de texto válido.');
-  if (b.categoryId && !id(b.categoryId, guild.channels)) throw new EconomyError('Categoría inválida.');
+  if (b.categoryId && (!id(b.categoryId, guild.channels) || guild.channels.cache.get(b.categoryId)?.type !== 4)) throw new EconomyError('La categoría de tickets debe ser una categoría de Discord válida.');
   if (b.supportRoleId && !id(b.supportRoleId, guild.roles)) throw new EconomyError('Rol de soporte inválido.');
   const panelCategories = Array.isArray(b.panelCategories) ? b.panelCategories.slice(0, 25).map((cat, i) => {
+    if (cat?.channelId && (!id(cat.channelId, guild.channels) || guild.channels.cache.get(cat.channelId)?.type !== 4))
+      throw new EconomyError('Cada categoría de tickets debe apuntar a una categoría de Discord válida.');
     const channelId = cat?.channelId ? id(cat.channelId, guild.channels) : id(b.categoryId, guild.channels);
     const supportRoleIds = Array.isArray(cat?.supportRoleIds) ? cat.supportRoleIds.filter(x => id(x, guild.roles)).slice(0, 10) : (b.supportRoleId ? [b.supportRoleId] : []);
     const subcategories = Array.isArray(cat?.subcategories) ? cat.subcategories.slice(0, 25).map((sub,j) => ({
