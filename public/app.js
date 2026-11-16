@@ -301,7 +301,7 @@ async function ticketsExtras(g, { lists }) {
   drawPanelList(); drawEditor(); drawPreview();
   root.append(h('h2',{},'🎫 Centro de tickets'),h('p',{class:'muted'},'Cada panel mantiene sus propios mensajes, componentes y equipo de soporte.'),
     panelList,grid,categoryPanel,h('h3',{},'🎟️ Historial de tickets'),
-    table(['#','Dueño','Categoría','Estado','Reclamado por','Valoración','Fecha',''],tickets.map(t=>[t.number,t.ownerName,t.category??'—',t.status,t.claimedBy??'—',t.rating?'⭐'.repeat(t.rating):'—',when(t.at),
+    table(['#','Dueño','Categoría','Estado','Reclamado por','Valoración','Fecha',''],tickets.map(t=>[t.number,t.ownerName,t.category??'—',t.status,t.claimedByName??'—',t.rating?'⭐'.repeat(t.rating):'—',when(t.at),
       t.hasTranscript?h('a',{class:'btn ghost',href:`/api${sg(g,`/tickets/${t.id}/transcript`)}`,download:''},'Transcripción'):''])));
   return root;
 }
