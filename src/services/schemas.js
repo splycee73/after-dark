@@ -161,8 +161,7 @@ export const SCHEMAS = {
     bool('showDescription', 'Mostrar sinopsis', true),
   ],
   anime18: [
-    bool('ageConfirmed', 'Confirmo que el canal es NSFW (restringido por edad) y que solo tiene acceso gente mayor de 18 años', false, { section: 'Acceso' }),
-    ref('channel', 'channelId', 'Canal NSFW de publicación'),
+    ref('channel', 'channelId', 'Canal NSFW de publicación', { section: 'Publicación' }),
     bool('autoPost', 'Publicar automáticamente', false),
     int('intervalMinutes', 'Cada (minutos)', 60, 10, 1440),
     int('postsPerRun', 'Publicaciones por vez', 1, 1, 3),
