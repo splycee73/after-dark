@@ -235,7 +235,7 @@ async function ticketsExtras(g, { lists }) {
     componentList.replaceChildren(...data.components.map((x, i) => {
       const label = h('input', { value: x.label, placeholder: 'Texto del botón' });
       const emoji = h('input', { value: x.emoji || '', placeholder: 'Emoji' });
-      const cat = selectEl(categories.filter((c) => c.enabled).map((c) => [c.id, c.name]), x.categoryId);
+      const cat = selectEl(categories.filter((c) => c.enabled).map((c) => [c.id, c.parentCategoryId ? `${categories.find(parent => parent.id === String(c.parentCategoryId))?.name || 'Categoría'} / ${c.name}` : c.name]), x.categoryId);
       const style = h('select', {}, [['Primary','Azul'],['Secondary','Gris'],['Success','Verde'],['Danger','Rojo']].map(([v,n]) => h('option', { value:v, selected:x.style===v }, n)));
       label.addEventListener('input', () => { x.label = label.value; drawPreview(); });
       emoji.addEventListener('input', () => { x.emoji = emoji.value; drawPreview(); });
