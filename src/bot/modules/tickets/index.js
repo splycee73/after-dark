@@ -4,7 +4,7 @@ import {
 } from 'discord.js';
 import { defineCommand, embed } from '../../lib/command.js';
 import { getModuleState } from '../../../services/guilds.js';
-import { createTicket, closeTicket, getTicketPanel, setTicketPanelMessage } from '../../../services/tickets.js';
+import { createTicket, closeTicket, getTicketPanel, setTicketPanelMessage, claimTicket, setTicketPriority, archiveTicket, getTicketByChannel, addTicketNote } from '../../../services/tickets.js';
 import { EconomyError } from '../../../services/economy.js';
 
 const MODULE = 'tickets';
@@ -55,7 +55,7 @@ async function makeTicket(interaction, panel, answers = {}) {
       : 'Describe tu problema con el mayor detalle posible. El equipo te atenderá pronto.';
     const title = panel ? fill(panel.welcomeTitle, { user: interaction.user.username, username: interaction.user.username, server: guild.name, ticket: String(row.id) }) : `🎫 Ticket #${row.id}`;
     const description = [intro, ...Object.entries(answers).map(([k,v]) => `**${k}:** ${v}`)].join('\n\n');
-    const close = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`adticket:close:${channel.id}`).setLabel('Cerrar ticket').setEmoji('🔒').setStyle(ButtonStyle.Danger));
+    const close = new ActionRowBuilder().addComponents(\n      new ButtonBuilder().setCustomId(`adticket:claim:${channel.id}`).setLabel('Reclamar').setEmoji('🙋').setStyle(ButtonStyle.Success),\n      new ButtonBuilder().setCustomId(`adticket:priority:${channel.id}`).setLabel('Prioridad').setEmoji('🚦').setStyle(ButtonStyle.Secondary),\n      new ButtonBuilder().setCustomId(`adticket:note:${channel.id}`).setLabel('Nota interna').setEmoji('📝').setStyle(ButtonStyle.Secondary),\n      new ButtonBuilder().setCustomId(`adticket:close:${channel.id}`).setLabel('Cerrar').setEmoji('🔒').setStyle(ButtonStyle.Danger));
     await channel.send({
       content: `<@!${interaction.user.id}> ${roleId ? `<@&${roleId}>` : ''}`,
       embeds: [new EmbedBuilder().setColor(colorOf(panel?.color)).setTitle(title).setDescription(description.slice(0, 4000))],
@@ -116,7 +116,7 @@ const close = defineCommand({
     await ctx.channel.send({ embeds: [embed('🔒 Ticket cerrado', `Cerrado por <@!${ctx.user.id}>.`)] });
     await ctx.channel.permissionOverwrites.edit(owner, { SendMessages: false }).catch(() => {});
     await ctx.channel.setTopic(topic.replace('ticket-status:open', 'ticket-status:closed')).catch(() => {});
-    setTimeout(() => ctx.channel.delete(`Ticket #${row.id} cerrado por ${ctx.user.tag}`).catch(() => {}), 10_000);
+    await ctx.channel.send({ content: 'El ticket quedó cerrado y se conservará en este canal. El equipo puede archivarlo cuando termine la revisión.' });
   },
 });
 
@@ -146,7 +146,55 @@ export default {
             }
             return makeTicket(interaction, panel);
           }
+          if (['claim','priority','note','archive'].includes(action)) {
+            const channel = interaction.guild.channels.cache.get(id);
+            const ticket = channel && await getTicketByChannel(interaction.guild.id, channel.id);
+            if (!ticket) return interaction.reply({ content: 'Ticket no encontrado.', ephemeral: true });
+            const panel = ticket.panelId ? await getTicketPanel(ticket.panelId, interaction.guild.id) : null;
+            const state = await getModuleState(interaction.guild.id, MODULE);
+            const roleId = panel?.supportRoleId || state.config.supportRoleId;
+            const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+            const staff = member && (member.permissions.has(PermissionFlagsBits.ManageChannels) || (roleId && member.roles.cache.has(roleId)));
+            if (!staff) return interaction.reply({ content: 'Solo el equipo de soporte puede usar este control.', ephemeral: true });
+            if (action === 'claim') {
+              if (ticket.status !== 'open') return interaction.reply({ content: 'El ticket ya está cerrado.', ephemeral: true });
+              const claimed = await claimTicket(channel.id, interaction.user.id);
+              return interaction.reply({ content: claimed ? `🙋 Ticket reclamado por <@${interaction.user.id}>.` : 'No se pudo reclamar el ticket.', allowedMentions: { users: [interaction.user.id] } });
+            }
+            if (action === 'priority') {
+              const levels = ['low','normal','high','urgent']; const next = levels[(levels.indexOf(ticket.priority || 'normal') + 1) % levels.length];
+              await setTicketPriority(channel.id, next);
+              return interaction.reply({ content: `Prioridad actualizada: **${next.toUpperCase()}**.`, ephemeral: true });
+            }
+            if (action === 'archive') {
+              if (ticket.status !== 'closed') return interaction.reply({ content: 'Primero debes cerrar el ticket.', ephemeral: true });
+              await archiveTicket(channel.id);
+              await channel.setTopic((channel.topic || '').replace('ticket-status:closed','ticket-status:archived')).catch(() => {});
+              await channel.permissionOverwrites.edit(ticket.openerId, { ViewChannel: false }).catch(() => {});
+              return interaction.reply({ content: '🗄️ Ticket archivado. El canal se conserva y queda oculto para quien lo abrió.', ephemeral: true });
+            }
+            if (action === 'note') {
+              const modal = new ModalBuilder().setCustomId(`adticket:noteform:${channel.id}`).setTitle('Añadir nota interna');
+              const input = new TextInputBuilder().setCustomId('content').setLabel('Nota (solo equipo)').setStyle(TextInputStyle.Paragraph).setRequired(true).setMaxLength(2000);
+              modal.addComponents(new ActionRowBuilder().addComponents(input));
+              return interaction.showModal(modal);
+            }
+          }
           if (action === 'close') return closeFromInteraction(interaction, id);
+        }
+        if (interaction.isModalSubmit() && interaction.customId.startsWith('adticket:noteform:')) {
+          const channelId = interaction.customId.split(':')[2];
+          const channel = interaction.guild.channels.cache.get(channelId);
+          const ticket = channel && await getTicketByChannel(interaction.guild.id, channel.id);
+          if (!ticket) return interaction.reply({ content: 'Ticket no encontrado.', ephemeral: true });
+          const panel = ticket.panelId ? await getTicketPanel(ticket.panelId, interaction.guild.id) : null;
+          const state = await getModuleState(interaction.guild.id, MODULE);
+          const roleId = panel?.supportRoleId || state.config.supportRoleId;
+          const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+          if (!member || (!member.permissions.has(PermissionFlagsBits.ManageChannels) && !(roleId && member.roles.cache.has(roleId)))) return interaction.reply({ content: 'Sin permisos de soporte.', ephemeral: true });
+          const content = interaction.fields.getTextInputValue('content').trim();
+          await addTicketNote(interaction.guild.id, ticket.id, interaction.user.id, content);
+          return interaction.reply({ content: '📝 Nota interna guardada. No se publicó en el canal.', ephemeral: true });
         }
         if (interaction.isModalSubmit() && interaction.customId.startsWith('adticket:form:')) {
           const id = interaction.customId.split(':')[2];
