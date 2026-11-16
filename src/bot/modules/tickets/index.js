@@ -70,7 +70,7 @@ async function makeTicket(interaction, panel, answers = {}, selectedCategory = n
     { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles] },
     { id: interaction.client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageChannels] },
   ];
-  const staffRoleIds = [...new Set([roleId, ...(panel?.panelCategories ?? []).flatMap(x => x.supportRoleIds ?? [])].filter(x => x && guild.roles.cache.has(x)))];
+  const staffRoleIds = supportRoleIds;
   const readonlyRoleIds = [...new Set((panel?.readonlyRoleIds ?? []).filter(x => guild.roles.cache.has(x)))];
   for (const id of staffRoleIds) perms.push({ id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
   for (const id of readonlyRoleIds) perms.push({ id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory], deny: [PermissionFlagsBits.SendMessages] });
@@ -78,7 +78,7 @@ async function makeTicket(interaction, panel, answers = {}, selectedCategory = n
   const channel = await guild.channels.create({
     name: `ticket-${slug}`, type: ChannelType.GuildText,
     ...(category?.type === ChannelType.GuildCategory ? { parent: category.id } : {}),
-    topic: `ticket-owner:${interaction.user.id};ticket-status:open;ticket-panel:${panel?.id ?? 'default'}`,
+    topic: `ticket-owner:${interaction.user.id};ticket-status:open;ticket-panel:${panel?.id ?? 'default'};ticket-category:${selectedCategory?.id ?? 'none'}`,
     permissionOverwrites: perms, reason: `Ticket abierto por ${interaction.user.tag}`,
   });
   try {
@@ -215,6 +215,8 @@ export default {
             const panel = ticket.panelId ? await getTicketPanel(ticket.panelId, interaction.guild.id) : null;
             const state = await getModuleState(interaction.guild.id, MODULE);
             const roleId = panel?.supportRoleId || state.config.supportRoleId;
+            const categoryId = channel.topic?.match(/ticket-category:([^;]+)/)?.[1];
+            const ticketCategory = (panel?.panelCategories ?? []).find(x => x.id === categoryId);
             const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
             const configuredRoles = [roleId, ...(panel?.panelCategories ?? []).flatMap(x => x.supportRoleIds ?? [])].filter(Boolean);
             const staff = member && (member.permissions.has(PermissionFlagsBits.ManageChannels) || configuredRoles.some(r => member.roles.cache.has(r)));
@@ -240,7 +242,7 @@ export default {
               if (ticket.claimedBy && ticket.claimedBy !== interaction.user.id && !member.permissions.has(PermissionFlagsBits.ManageChannels)) return interaction.reply({ content: 'Solo quien lo reclamó o un administrador puede liberarlo.', ephemeral: true });
               const released = await releaseTicket(channel.id);
               if (!released) return interaction.reply({ content: 'No se pudo liberar el ticket.', ephemeral: true });
-              const rolesToRestore = [...new Set([roleId, ...(panel?.panelCategories ?? []).flatMap(x => x.supportRoleIds ?? []), ...(panel?.readonlyRoleIds ?? [])].filter(Boolean))];
+              const rolesToRestore = [...new Set([roleId, ...(ticketCategory?.supportRoleIds ?? []), ...(panel?.readonlyRoleIds ?? [])].filter(Boolean))];
               for (const rid of rolesToRestore) {
                 if (!channel.guild.roles.cache.has(rid)) continue;
                 const readOnly = (panel?.readonlyRoleIds ?? []).includes(rid);
