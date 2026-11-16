@@ -83,7 +83,7 @@ async function getLists(gid) {
   const c = listsCache.get(gid);
   if (c && Date.now() - c.t < 15000) return c.v;
   const [ch, ro, ca] = await Promise.all([api(`/guilds/${gid}/channels`), api(`/guilds/${gid}/roles`), api(`/guilds/${gid}/categories`)]);
-  const v = { channel: ch.map((x) => [x.id, '#' + x.name]), role: ro.map((x) => [x.id, '@' + x.name]), category: ca.map((x) => [x.id, x.name]) };
+  const v = { channel: ch.map((x) => [x.id, '#' + x.name]), role: ro.map((x) => [x.id, '@' + x.name]), assignableRole: ro.filter((x) => x.assignable).map((x) => [x.id, '@' + x.name]), category: ca.map((x) => [x.id, x.name]) };
   listsCache.set(gid, { t: Date.now(), v });
   return v;
 }
