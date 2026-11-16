@@ -109,7 +109,6 @@ export async function sendPanelById(guild, id) {
   if (panelId && !panel) throw new EconomyError('Este panel ya no está disponible.');
   const cat = await categories.get(guild.id, categoryId);
   if (!cat || !cat.enabled) throw new EconomyError('Esta categoría ya no está disponible.');
-  if (cat.parentCategoryId) throw new EconomyError('Selecciona una subcategoría.');
   if (cat.panelId && panel && String(cat.panelId) !== String(panel.id)) throw new EconomyError('Esta categoría no pertenece a ese panel.');
   const panelRoles = panel?.support_role_ids ?? cfg.supportRoleIds;
 
