@@ -19,6 +19,10 @@ export const categories = entity({
     { key: 'welcomeMessage', col: 'welcome_message', type: 'str', max: 500, label: 'Mensaje de bienvenida' },
     { key: 'questions', col: 'questions', type: 'lines', max: 5, maxLen: 45, label: 'Preguntas del formulario' },
     { key: 'enabled', col: 'enabled', type: 'bool', def: true, label: 'Activa' },
+    { key: 'panelId', col: 'panel_id', type: 'int', min: 1, max: 2147483647, label: 'Panel' },
+    { key: 'parentCategoryId', col: 'parent_category_id', type: 'int', min: 1, max: 2147483647, label: 'Subcategoría de' },
+    { key: 'buttonLabel', col: 'button_label', type: 'str', max: 80, label: 'Texto del botón' },
+    { key: 'buttonStyle', col: 'button_style', type: 'str', max: 20, label: 'Estilo del botón' },
   ],
 });
 
@@ -35,10 +39,74 @@ export async function getByChannel(channelId) {
   return t ?? null;
 }
 
-export async function openTicket({ guild, member, categoryId, answers = [] }) {
+
+const SNOW = /^\\d{17,20}$/;
+const PANEL_STYLES = new Set(['Primary', 'Secondary', 'Success', 'Danger']);
+const cleanPanel = (body = {}, guild) => {
+  const name = String(body.name ?? '').trim().slice(0, 80);
+  if (!name) throw new EconomyError('El panel necesita un nombre.');
+  const roles = Array.isArray(body.supportRoleIds) ? body.supportRoleIds : [];
+  if (roles.length > 20 || roles.some((id) => !SNOW.test(id) || !guild.roles.cache.has(id))) throw new EconomyError('Los roles de soporte no son válidos.');
+  const channelId = body.channelId || null;
+  if (channelId && (!SNOW.test(channelId) || !guild.channels.cache.has(channelId) || !guild.channels.cache.get(channelId).isTextBased())) throw new EconomyError('El canal del panel no es válido.');
+  const color = /^#[0-9a-f]{6}$/i.test(body.color ?? '') ? body.color : '#8b5cf6';
+  const components = Array.isArray(body.components) ? body.components.slice(0, 25).map((x) => ({
+    type: x.type === 'button' ? 'button' : 'category',
+    label: String(x.label ?? '').trim().slice(0, 80),
+    emoji: String(x.emoji ?? '').slice(0, 60),
+    description: String(x.description ?? '').slice(0, 100),
+    categoryId: /^\\d+$/.test(String(x.categoryId ?? '')) ? String(x.categoryId) : null,
+    style: PANEL_STYLES.has(x.style) ? x.style : 'Primary',
+  })).filter((x) => x.label) : [];
+  return {
+    name, channelId, title: String(body.title ?? '').slice(0, 256), description: String(body.description ?? '').slice(0, 4000),
+    color, supportRoleIds: roles, welcomeMessage: String(body.welcomeMessage ?? '').slice(0, 1000),
+    closeMessage: String(body.closeMessage ?? '').slice(0, 500), claimEnabled: body.claimEnabled !== false,
+    ownerCanClose: body.ownerCanClose === true, components, enabled: body.enabled !== false,
+  };
+};
+
+export async function listPanels(guildId) {
+  const { rows } = await query('SELECT * FROM ticket_panels WHERE guild_id=$1 ORDER BY id', [guildId]);
+  return rows.map((r) => ({ id: String(r.id), name: r.name, channelId: r.channel_id, title: r.title, description: r.description,
+    color: r.color, supportRoleIds: r.support_role_ids, welcomeMessage: r.welcome_message, closeMessage: r.close_message,
+    claimEnabled: r.claim_enabled, ownerCanClose: r.owner_can_close, components: r.components, messageId: r.message_id, enabled: r.enabled }));
+}
+export async function savePanel(guild, body, id = null) {
+  const v = cleanPanel(body, guild);
+  const args = [guild.id, v.name, v.channelId, v.title, v.description, v.color, v.supportRoleIds, v.welcomeMessage,
+    v.closeMessage, v.claimEnabled, v.ownerCanClose, JSON.stringify(v.components), v.enabled];
+  const sql = id
+    ? `UPDATE ticket_panels SET name=$2,channel_id=$3,title=$4,description=$5,color=$6,support_role_ids=$7,welcome_message=$8,close_message=$9,claim_enabled=$10,owner_can_close=$11,components=$12::jsonb,enabled=$13 WHERE guild_id=$1 AND id=$14 RETURNING id`
+    : `INSERT INTO ticket_panels(guild_id,name,channel_id,title,description,color,support_role_ids,welcome_message,close_message,claim_enabled,owner_can_close,components,enabled) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13) RETURNING id`;
+  const { rows: [r] } = await query(sql, id ? [...args, id] : args);
+  if (!r) throw new EconomyError('Panel no encontrado.');
+  return (await listPanels(guild.id)).find((x) => x.id === String(r.id));
+}
+export async function deletePanel(guildId, id) {
+  await query('DELETE FROM ticket_panels WHERE guild_id=$1 AND id=$2', [guildId, id]);
+}
+export async function sendPanelById(guild, id) {
+  const { rows: [p] } = await query('SELECT * FROM ticket_panels WHERE guild_id=$1 AND id=$2 AND enabled=true', [guild.id, id]);
+  if (!p) throw new EconomyError('Panel no encontrado o desactivado.');
+  const ch = p.channel_id && guild.channels.cache.get(p.channel_id);
+  if (!ch?.isTextBased()) throw new EconomyError('Selecciona un canal válido para este panel.');
+  const cats = (await categories.list(guild.id)).filter((x) => x.enabled && (!x.panelId || x.panelId === String(id)));
+  const components = p.components?.length ? p.components : cats.map((x) => ({ type: 'category', label: x.buttonLabel || x.name, emoji: x.emoji, categoryId: x.id, style: x.buttonStyle || 'Primary' }));
+  const rows = [];
+  for (let i=0;i<Math.min(25,components.length);i+=5) rows.push(new ActionRowBuilder().addComponents(components.slice(i,i+5).map((x) => {
+    const b = new ButtonBuilder().setCustomId(x.type === 'button' ? `tk:custom:${id}` : `tk:open:${x.categoryId}`).setLabel(x.label).setStyle(ButtonStyle[x.style] ?? ButtonStyle.Primary);
+    if (x.emoji && EMOJI.test(x.emoji)) b.setEmoji(x.emoji);
+    return b;
+  })));
+  const e = new EmbedBuilder().setColor(hexToInt(p.color)).setTitle(p.title).setDescription(p.description);
+  await ch.send({ embeds: [e], components: rows });
+  return { ok: true };
+}
+\nexport async function openTicket({ guild, member, categoryId, panelId = null, answers = [] }) {
   const { config: cfg } = await getModuleState(guild.id, 'tickets');
   const cat = await categories.get(guild.id, categoryId);
-  if (!cat || !cat.enabled) throw new EconomyError('Esta categoría ya no está disponible.');
+  if (!cat || !cat.enabled) throw new EconomyError('Esta categoría ya no está disponible.');\n  if (cat.parentCategoryId) throw new EconomyError('Selecciona una categoría principal.');\n  const panelRoles = panel?.support_role_ids ?? cfg.supportRoleIds;
 
   const ticket = await withTx(async (c) => {
     await c.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`ticket:${guild.id}`]);
@@ -49,10 +117,10 @@ export async function openTicket({ guild, member, categoryId, answers = [] }) {
     return (await c.query(
       `INSERT INTO tickets (guild_id, number, category_id, owner_id, answers)
        VALUES ($1, (SELECT COALESCE(MAX(number),0)+1 FROM tickets WHERE guild_id=$1), $2, $3, $4) RETURNING *`,
-      [guild.id, cat.id, member.id, JSON.stringify(answers)])).rows[0];
+      [guild.id, cat.id, member.id, JSON.stringify(answers), panel?.id ?? null])).rows[0];
   });
 
-  const supportRoles = [...new Set([...cfg.supportRoleIds, ...cat.supportRoleIds])].filter((r) => guild.roles.cache.has(r));
+  const supportRoles = [...new Set([...panelRoles, ...cat.supportRoleIds])].filter((r) => guild.roles.cache.has(r));
   const allow = [P.ViewChannel, P.SendMessages, P.ReadMessageHistory, P.AttachFiles, P.EmbedLinks];
   let channel;
   try {
@@ -74,12 +142,12 @@ export async function openTicket({ guild, member, categoryId, answers = [] }) {
   }
   await query('UPDATE tickets SET channel_id=$2 WHERE id=$1', [ticket.id, channel.id]);
 
-  const e = new EmbedBuilder().setColor(hexToInt(cfg.panelColor)).setTitle(`${cat.emoji} ${cat.name} · #${ticket.number}`.trim())
-    .setDescription(render(cat.welcomeMessage || cfg.welcomeMessage, { user: `<@${member.id}>`, category: cat.name }) || '\u200b')
+  const e = new EmbedBuilder().setColor(hexToInt(panel?.color ?? cfg.panelColor)).setTitle(`${cat.emoji} ${cat.name} · #${ticket.number}`.trim())
+    .setDescription(render(cat.welcomeMessage || panel?.welcome_message || cfg.welcomeMessage, { user: `<@${member.id}>`, category: cat.name }) || '\u200b')
     .setTimestamp();
   cat.questions.forEach((q, i) => answers[i] && e.addFields({ name: q.slice(0, 256), value: String(answers[i]).slice(0, 1024) }));
   const row = new ActionRowBuilder();
-  if (cfg.claimEnabled) row.addComponents(new ButtonBuilder().setCustomId('tk:claim').setLabel('Reclamar').setEmoji('🙋').setStyle(ButtonStyle.Success));
+  if (panel?.claim_enabled ?? cfg.claimEnabled) row.addComponents(new ButtonBuilder().setCustomId('tk:claim').setLabel('Reclamar').setEmoji('🙋').setStyle(ButtonStyle.Success));
   row.addComponents(new ButtonBuilder().setCustomId('tk:close').setLabel('Cerrar').setEmoji('🔒').setStyle(ButtonStyle.Danger));
   await channel.send({
     content: `<@${member.id}> ${supportRoles.map((r) => `<@&${r}>`).join(' ')}`.trim(), embeds: [e], components: [row],
@@ -90,8 +158,12 @@ export async function openTicket({ guild, member, categoryId, answers = [] }) {
 }
 
 export async function claimTicket({ ticket, member }) {
-  const { rowCount } = await query("UPDATE tickets SET claimed_by=$2 WHERE id=$1 AND claimed_by IS NULL AND status='open'", [ticket.id, member.id]);
+  const { rowCount } = await query("UPDATE tickets SET claimed_by=$2, claimed_at=now() WHERE id=$1 AND claimed_by IS NULL AND status='open'", [ticket.id, member.id]);
   if (!rowCount) throw new EconomyError('Este ticket ya fue reclamado o está cerrado.');
+  const { rows: [t] } = await query('SELECT t.*, p.support_role_ids AS panel_roles FROM tickets t LEFT JOIN ticket_panels p ON p.id=t.panel_id WHERE t.id=$1', [ticket.id]);
+  const roles = [...new Set([...(t.panel_roles ?? []), ...(t.cat_roles ?? [])])];
+  for (const roleId of roles) await member.guild.channels.cache.get(t.channel_id)?.permissionOverwrites.edit(roleId, { ViewChannel: false }).catch(() => {});
+  await member.guild.channels.cache.get(t.channel_id)?.permissionOverwrites.edit(member.id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true, AttachFiles: true }).catch(() => {});
 }
 
 async function buildTranscript(channel, t) {
