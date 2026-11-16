@@ -4,6 +4,12 @@ import { entity } from './entity.js';
 import { EconomyError } from './economy.js';
 import { hexToInt } from './messages.js';
 
+const blockedRoleName = /(owner|co[-_ ]?owner|admin|administrator|staff|moderator|\\bmod\\b|developer|founder|fundador|cofundador|team|equipo)/i;
+const isSafeAssignableRole = (role) => Boolean(role && role.editable && !role.managed &&
+  !blockedRoleName.test(role.name) &&
+  !role.permissions.any([P.Administrator, P.ManageGuild, P.ManageRoles, P.ManageChannels, P.BanMembers,
+    P.KickMembers, P.ModerateMembers, P.ManageWebhooks, P.ManageMessages]));
+
 export const panels = entity({
   table: 'role_panels', max: 20, extra: { messageId: 'message_id' },
   fields: [
@@ -22,8 +28,9 @@ export async function sendPanel(guild, id) {
   if (!p) throw new EconomyError('Panel no encontrado.');
   const ch = p.channelId && guild.channels.cache.get(p.channelId);
   if (!ch?.isTextBased()) throw new EconomyError('Selecciona un canal para el panel y guarda antes de enviarlo.');
-  const roles = p.roleIds.map((r) => guild.roles.cache.get(r)).filter(Boolean);
-  if (!roles.length) throw new EconomyError('El panel no tiene roles válidos.');
+  const roles = p.roleIds.map((r) => guild.roles.cache.get(r)).filter(isSafeAssignableRole);
+  if (!roles.length) throw new EconomyError('El panel no tiene roles seguros y asignables. Edita el panel y selecciona roles permitidos.');
+  if (roles.length !== p.roleIds.length) await query('UPDATE role_panels SET role_ids=$2 WHERE guild_id=$1 AND id=$3', [guild.id, roles.map((r) => r.id), p.id]);
   const rows = [];
   for (let i = 0; i < roles.length; i += 5) {
     rows.push(new ActionRowBuilder().addComponents(roles.slice(i, i + 5).map((r) =>
@@ -39,8 +46,7 @@ export async function toggleRole(interaction) {
   const p = await panels.get(interaction.guild.id, panelId);
   if (!p || !p.roleIds.includes(roleId)) return interaction.reply({ content: 'Este panel ya no es válido.', ephemeral: true });
   const role = interaction.guild.roles.cache.get(roleId);
-  if (!role || !role.editable) return interaction.reply({ content: 'No puedo gestionar ese rol (revisa la jerarquía del bot).', ephemeral: true });
-  if (/(owner|co[-_ ]?owner|admin|administrator|staff|moderator|\\bmod\\b|developer|founder|fundador|cofundador|team|equipo)/i.test(role.name) || role.permissions.any([P.Administrator, P.ManageGuild, P.ManageRoles, P.ManageChannels, P.BanMembers, P.KickMembers, P.ModerateMembers, P.ManageWebhooks, P.ManageMessages]))
+  if (!isSafeAssignableRole(role))
     return interaction.reply({ content: 'Por seguridad, los autoroles no pueden entregar roles con permisos de administración.', ephemeral: true });
   const m = interaction.member;
   if (m.roles.cache.has(roleId)) {
