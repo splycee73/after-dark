@@ -95,7 +95,7 @@ export async function sendPanelById(guild, id) {
   const components = p.components?.length ? p.components : cats.map((x) => ({ type: 'category', label: x.buttonLabel || x.name, emoji: x.emoji, categoryId: x.id, style: x.buttonStyle || 'Primary' }));
   const rows = [];
   for (let i=0;i<Math.min(25,components.length);i+=5) rows.push(new ActionRowBuilder().addComponents(components.slice(i,i+5).map((x) => {
-    const b = new ButtonBuilder().setCustomId(x.type === 'button' ? `tk:custom:${id}` : `tk:open:${x.categoryId}`).setLabel(x.label).setStyle(ButtonStyle[x.style] ?? ButtonStyle.Primary);
+    const b = new ButtonBuilder().setCustomId(`tk:open:${x.categoryId}:${id}`).setLabel(x.label).setStyle(ButtonStyle[x.style] ?? ButtonStyle.Primary);
     if (x.emoji && EMOJI.test(x.emoji)) b.setEmoji(x.emoji);
     return b;
   })));
