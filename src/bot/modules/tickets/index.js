@@ -170,12 +170,14 @@ export default {
               return interaction.reply({ content: claimed ? `🙋 Ticket reclamado por <@${interaction.user.id}>.` : 'No se pudo reclamar el ticket.', allowedMentions: { users: [interaction.user.id] } });
             }
             if (action === 'assign') {
+              if (ticket.status !== 'open') return interaction.reply({ content: 'No puedes reasignar un ticket cerrado.', ephemeral: true });
               const modal = new ModalBuilder().setCustomId(`adticket:assignform:${channel.id}`).setTitle('Reasignar ticket');
               const input = new TextInputBuilder().setCustomId('userId').setLabel('ID de usuario del nuevo responsable').setStyle(TextInputStyle.Short).setRequired(true).setMinLength(17).setMaxLength(20);
               modal.addComponents(new ActionRowBuilder().addComponents(input));
               return interaction.showModal(modal);
             }
             if (action === 'priority') {
+              if (ticket.status !== 'open') return interaction.reply({ content: 'No puedes cambiar la prioridad de un ticket cerrado.', ephemeral: true });
               const levels = ['low','normal','high','urgent']; const next = levels[(levels.indexOf(ticket.priority || 'normal') + 1) % levels.length];
               await setTicketPriority(channel.id, next);
               return interaction.reply({ content: `Prioridad actualizada: **${next.toUpperCase()}**.`, ephemeral: true });
@@ -201,6 +203,7 @@ export default {
           const channel = interaction.guild.channels.cache.get(channelId);
           const ticket = channel && await getTicketByChannel(interaction.guild.id, channel.id);
           if (!ticket) return interaction.reply({ content: 'Ticket no encontrado.', ephemeral: true });
+          if (ticket.status !== 'open') return interaction.reply({ content: 'No puedes reasignar un ticket cerrado.', ephemeral: true });
           const panel = ticket.panelId ? await getTicketPanel(ticket.panelId, interaction.guild.id) : null;
           const state = await getModuleState(interaction.guild.id, MODULE);
           const roleId = panel?.supportRoleId || state.config.supportRoleId;
