@@ -9,7 +9,7 @@ import { emitLog } from '../lib/bus.js';
 import { render, hexToInt } from './messages.js';
 
 export const categories = entity({
-  table: 'ticket_categories', order: 'position, id', max: 25,
+  table: 'ticket_categories', order: 'position, id', max: 250,
   fields: [
     { key: 'name', col: 'name', type: 'str', max: 80, req: true, label: 'Nombre' },
     { key: 'emoji', col: 'emoji', type: 'str', max: 60, label: 'Emoji' },
