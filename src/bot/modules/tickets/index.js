@@ -54,8 +54,15 @@ async function makeTicket(interaction, panel, answers = {}) {
       ? fill(panel.welcomeMessage, { user: `<@!${interaction.user.id}>`, username: interaction.user.username, server: guild.name, ticket: String(row.id) })
       : 'Describe tu problema con el mayor detalle posible. El equipo te atenderá pronto.';
     const title = panel ? fill(panel.welcomeTitle, { user: interaction.user.username, username: interaction.user.username, server: guild.name, ticket: String(row.id) }) : `🎫 Ticket #${row.id}`;
-    const description = [intro, ...Object.entries(answers).map(([k,v]) => `**${k}:** ${v}`)].join('\n\n');
-    const close = new ActionRowBuilder().addComponents(\n      new ButtonBuilder().setCustomId(`adticket:claim:${channel.id}`).setLabel('Reclamar').setEmoji('🙋').setStyle(ButtonStyle.Success),\n      new ButtonBuilder().setCustomId(`adticket:assign:${channel.id}`).setLabel('Reasignar').setEmoji('👥').setStyle(ButtonStyle.Secondary),\n      new ButtonBuilder().setCustomId(`adticket:priority:${channel.id}`).setLabel('Prioridad').setEmoji('🚦').setStyle(ButtonStyle.Secondary),\n      new ButtonBuilder().setCustomId(`adticket:note:${channel.id}`).setLabel('Nota interna').setEmoji('📝').setStyle(ButtonStyle.Secondary),\n      new ButtonBuilder().setCustomId(`adticket:close:${channel.id}`).setLabel('Cerrar').setEmoji('🔒').setStyle(ButtonStyle.Danger));
+    const description = [intro, ...Object.entries(answers).map(([k,v]) => `**${k}:** ${v}`)].join('
+
+');
+    const close = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`adticket:claim:${channel.id}`).setLabel('Reclamar').setEmoji('🙋').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`adticket:assign:${channel.id}`).setLabel('Reasignar').setEmoji('👥').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`adticket:priority:${channel.id}`).setLabel('Prioridad').setEmoji('🚦').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`adticket:note:${channel.id}`).setLabel('Nota interna').setEmoji('📝').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`adticket:close:${channel.id}`).setLabel('Cerrar').setEmoji('🔒').setStyle(ButtonStyle.Danger));
     await channel.send({
       content: `<@!${interaction.user.id}> ${roleId ? `<@&${roleId}>` : ''}`,
       embeds: [new EmbedBuilder().setColor(colorOf(panel?.color)).setTitle(title).setDescription(description.slice(0, 4000))],
@@ -161,7 +168,13 @@ export default {
               const claimed = await claimTicket(channel.id, interaction.user.id);
               return interaction.reply({ content: claimed ? `🙋 Ticket reclamado por <@${interaction.user.id}>.` : 'No se pudo reclamar el ticket.', allowedMentions: { users: [interaction.user.id] } });
             }
-            if (action === 'assign') {\n              const modal = new ModalBuilder().setCustomId(`adticket:assignform:${channel.id}`).setTitle('Reasignar ticket');\n              const input = new TextInputBuilder().setCustomId('userId').setLabel('ID de usuario del nuevo responsable').setStyle(TextInputStyle.Short).setRequired(true).setMinLength(17).setMaxLength(20);\n              modal.addComponents(new ActionRowBuilder().addComponents(input));\n              return interaction.showModal(modal);\n            }\n            if (action === 'priority') {
+            if (action === 'assign') {
+              const modal = new ModalBuilder().setCustomId(`adticket:assignform:${channel.id}`).setTitle('Reasignar ticket');
+              const input = new TextInputBuilder().setCustomId('userId').setLabel('ID de usuario del nuevo responsable').setStyle(TextInputStyle.Short).setRequired(true).setMinLength(17).setMaxLength(20);
+              modal.addComponents(new ActionRowBuilder().addComponents(input));
+              return interaction.showModal(modal);
+            }
+            if (action === 'priority') {
               const levels = ['low','normal','high','urgent']; const next = levels[(levels.indexOf(ticket.priority || 'normal') + 1) % levels.length];
               await setTicketPriority(channel.id, next);
               return interaction.reply({ content: `Prioridad actualizada: **${next.toUpperCase()}**.`, ephemeral: true });
@@ -193,7 +206,7 @@ export default {
           const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
           if (!member || (!member.permissions.has(PermissionFlagsBits.ManageChannels) && !(roleId && member.roles.cache.has(roleId)))) return interaction.reply({ content: 'Sin permisos de soporte.', ephemeral: true });
           const userId = interaction.fields.getTextInputValue('userId').trim();
-          if (!/^\\d{17,20}$/.test(userId)) return interaction.reply({ content: 'ID de Discord inválido.', ephemeral: true });
+          if (!/^\d{17,20}$/.test(userId)) return interaction.reply({ content: 'ID de Discord inválido.', ephemeral: true });
           const target = await interaction.guild.members.fetch(userId).catch(() => null);
           if (!target) return interaction.reply({ content: 'El usuario no pertenece al servidor.', ephemeral: true });
           await assignTicket(channel.id, userId);
