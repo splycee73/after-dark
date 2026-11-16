@@ -123,7 +123,8 @@ const close = defineCommand({
     await ctx.channel.send({ embeds: [embed('🔒 Ticket cerrado', `Cerrado por <@!${ctx.user.id}>.`)] });
     await ctx.channel.permissionOverwrites.edit(owner, { SendMessages: false }).catch(() => {});
     await ctx.channel.setTopic(topic.replace('ticket-status:open', 'ticket-status:closed')).catch(() => {});
-    await ctx.channel.send({ content: 'El ticket quedó cerrado y se conservará en este canal. El equipo puede archivarlo cuando termine la revisión.' });
+    const archive = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`adticket:archive:${ctx.channel.id}`).setLabel('Archivar ticket').setEmoji('🗄️').setStyle(ButtonStyle.Secondary));
+    await ctx.channel.send({ content: 'El ticket quedó cerrado y se conservará en este canal. El equipo puede archivarlo cuando termine la revisión.', components: [archive] });
   },
 });
 
