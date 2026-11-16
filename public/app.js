@@ -255,7 +255,7 @@ async function ticketsExtras(g, { channels, roles }) {
         h('div', { class: 'glass stat' }, h('b', {}, fmt(data.counts.open)), h('span', {}, 'Abiertos ahora')),
         h('div', { class: 'glass stat' }, h('b', {}, fmt(data.counts.total)), h('span', {}, 'Tickets registrados'))),
       h('h3', {}, 'Actividad reciente'),
-      table(['Ticket','Canal','Usuario','Estado','Creado'],data.tickets.map(t=>[`#${t.id}`,h('a',{href:`https://discord.com/channels/${g.id}/${t.channelId}`,target:'_blank',rel:'noopener'},'Abrir canal'),t.openerId,t.status==='open'?'🟢 Abierto':'⚫ Cerrado',when(t.createdAt)]))
+      table(['Ticket','Canal','Usuario','Estado','Prioridad','Responsable','Transcripción','Creado'],data.tickets.map(t=>[`#${t.id}`,h('a',{href:`https://discord.com/channels/${g.id}/${t.channelId}`,target:'_blank',rel:'noopener'},'Abrir canal'),t.openerId,t.archivedAt?'🗄️ Archivado':t.status==='open'?'🟢 Abierto':'⚫ Cerrado',t.priority||'normal',t.claimedBy||'—',h('a',{href:`/api/guilds/${g.id}/tickets/${t.id}/transcript`,download:`ticket-${t.id}.html`},'Descargar HTML'),when(t.createdAt)]))
     );
   };
   setValues(); draw();
