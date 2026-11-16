@@ -86,8 +86,8 @@ async function closeFromInteraction(interaction, channelId) {
   await interaction.reply({ content: message, ephemeral: false });
   await channel.permissionOverwrites.edit(owner, { SendMessages: false }).catch(() => {});
   await channel.setTopic((channel.topic ?? '').replace('ticket-status:open', 'ticket-status:closed')).catch(() => {});
-  await channel.send({ content: 'Este canal se eliminará en 10 segundos. El equipo puede conservarlo si necesita revisar el caso.' }).catch(() => {});
-  setTimeout(() => channel.delete(`Ticket #${row.id} cerrado por ${interaction.user.tag}`).catch(() => {}), 10_000);
+  const archive = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`adticket:archive:${channel.id}`).setLabel('Archivar ticket').setEmoji('🗄️').setStyle(ButtonStyle.Secondary));
+  await channel.send({ content: 'El ticket quedó cerrado y se conservará en este canal.', components: [archive] }).catch(() => {});
 }
 
 const open = defineCommand({
