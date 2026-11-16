@@ -13,7 +13,7 @@ export const panels = entity({
     { key: 'description', col: 'description', type: 'str', max: 1500, label: 'Descripción' },
     { key: 'color', col: 'color', type: 'color', label: 'Color' },
     { key: 'exclusive', col: 'exclusive', type: 'bool', label: 'Solo un rol a la vez' },
-    { key: 'roleIds', col: 'role_ids', type: 'roles', max: 25, req: true, label: 'Roles' },
+    { key: 'roleIds', col: 'role_ids', type: 'assignableRoles', max: 25, req: true, label: 'Roles autoasignables' },
   ],
 });
 
@@ -40,7 +40,7 @@ export async function toggleRole(interaction) {
   if (!p || !p.roleIds.includes(roleId)) return interaction.reply({ content: 'Este panel ya no es válido.', ephemeral: true });
   const role = interaction.guild.roles.cache.get(roleId);
   if (!role || !role.editable) return interaction.reply({ content: 'No puedo gestionar ese rol (revisa la jerarquía del bot).', ephemeral: true });
-  if (role.permissions.has([P.Administrator]) || role.permissions.has([P.ManageGuild]) || role.permissions.has([P.ManageRoles]))
+  if (/(owner|co[-_ ]?owner|admin|administrator|staff|moderator|\\bmod\\b|developer|founder|fundador|cofundador|team|equipo)/i.test(role.name) || role.permissions.any([P.Administrator, P.ManageGuild, P.ManageRoles, P.ManageChannels, P.BanMembers, P.KickMembers, P.ModerateMembers, P.ManageWebhooks, P.ManageMessages]))
     return interaction.reply({ content: 'Por seguridad, los autoroles no pueden entregar roles con permisos de administración.', ephemeral: true });
   const m = interaction.member;
   if (m.roles.cache.has(roleId)) {
