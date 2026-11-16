@@ -4,7 +4,7 @@ import {
 } from 'discord.js';
 import { defineCommand, embed } from '../../lib/command.js';
 import { getModuleState } from '../../../services/guilds.js';
-import { createTicket, closeTicket, getTicketPanel, setTicketPanelMessage, claimTicket, assignTicket, setTicketPriority, archiveTicket, getTicketByChannel, addTicketNote } from '../../../services/tickets.js';
+import { createTicket, closeTicket, getTicketPanel, setTicketPanelMessage, claimTicket, releaseTicket, assignTicket, setTicketPriority, archiveTicket, getTicketByChannel, addTicketNote } from '../../../services/tickets.js';
 import { EconomyError } from '../../../services/economy.js';
 
 const MODULE = 'tickets';
@@ -40,7 +40,10 @@ async function makeTicket(interaction, panel, answers = {}) {
     { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles] },
     { id: interaction.client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageChannels] },
   ];
-  if (roleId && guild.roles.cache.has(roleId)) perms.push({ id: roleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
+  const staffRoleIds = [...new Set([roleId, ...(panel?.panelCategories ?? []).flatMap(x => x.supportRoleIds ?? [])].filter(x => x && guild.roles.cache.has(x)))];
+  const readonlyRoleIds = [...new Set((panel?.readonlyRoleIds ?? []).filter(x => guild.roles.cache.has(x)))];
+  for (const id of staffRoleIds) perms.push({ id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
+  for (const id of readonlyRoleIds) perms.push({ id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory], deny: [PermissionFlagsBits.SendMessages] });
   const slug = interaction.user.username.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 16) || 'usuario';
   const channel = await guild.channels.create({
     name: `ticket-${slug}`, type: ChannelType.GuildText,
@@ -152,7 +155,7 @@ export default {
             }
             return makeTicket(interaction, panel);
           }
-          if (['claim','assign','priority','note','archive'].includes(action)) {
+          if (['claim','release','assign','priority','note','archive'].includes(action)) {
             const channel = interaction.guild.channels.cache.get(id);
             const ticket = channel && await getTicketByChannel(interaction.guild.id, channel.id);
             if (!ticket) return interaction.reply({ content: 'Ticket no encontrado.', ephemeral: true });
@@ -160,12 +163,45 @@ export default {
             const state = await getModuleState(interaction.guild.id, MODULE);
             const roleId = panel?.supportRoleId || state.config.supportRoleId;
             const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
-            const staff = member && (member.permissions.has(PermissionFlagsBits.ManageChannels) || (roleId && member.roles.cache.has(roleId)));
+            const configuredRoles = [roleId, ...(panel?.panelCategories ?? []).flatMap(x => x.supportRoleIds ?? [])].filter(Boolean);
+            const staff = member && (member.permissions.has(PermissionFlagsBits.ManageChannels) || configuredRoles.some(r => member.roles.cache.has(r)));
             if (!staff) return interaction.reply({ content: 'Solo el equipo de soporte puede usar este control.', ephemeral: true });
             if (action === 'claim') {
               if (ticket.status !== 'open') return interaction.reply({ content: 'El ticket ya está cerrado.', ephemeral: true });
+              if (ticket.claimedBy && ticket.claimedBy !== interaction.user.id) return interaction.reply({ content: 'Este ticket ya fue reclamado por otro miembro del equipo.', ephemeral: true });
               const claimed = await claimTicket(channel.id, interaction.user.id);
-              return interaction.reply({ content: claimed ? `🙋 Ticket reclamado por <@${interaction.user.id}>.` : 'No se pudo reclamar el ticket.', allowedMentions: { users: [interaction.user.id] } });
+              if (!claimed) return interaction.reply({ content: 'No se pudo reclamar el ticket.', ephemeral: true });
+              const ownerId = ticket.openerId;
+              const rolesToHide = [...new Set([roleId, ...(panel?.panelCategories ?? []).flatMap(x => x.supportRoleIds ?? []), ...(panel?.readonlyRoleIds ?? [])].filter(Boolean))];
+              for (const rid of rolesToHide) await channel.permissionOverwrites.edit(rid, { ViewChannel: false, SendMessages: false }).catch(() => {});
+              await channel.permissionOverwrites.edit(ownerId, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true }).catch(() => {});
+              await channel.permissionOverwrites.edit(interaction.user.id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true }).catch(() => {});
+              const rows = interaction.message.components.map(row => new ActionRowBuilder().addComponents(...row.components.map(component => {
+                if (component.customId === `adticket:claim:${channel.id}`) return new ButtonBuilder().setCustomId(`adticket:release:${channel.id}`).setLabel('Liberar').setEmoji('🔓').setStyle(ButtonStyle.Secondary);
+                return ButtonBuilder.from(component);
+              })));
+              await interaction.message.edit({ components: rows }).catch(() => {});
+              return interaction.reply({ content: `🙋 Ticket reclamado por <@${interaction.user.id}>. El resto del equipo ya no puede verlo; los administradores conservan acceso.`, allowedMentions: { users: [interaction.user.id] } });
+            }
+            if (action === 'release') {
+              if (ticket.claimedBy && ticket.claimedBy !== interaction.user.id && !member.permissions.has(PermissionFlagsBits.ManageChannels)) return interaction.reply({ content: 'Solo quien lo reclamó o un administrador puede liberarlo.', ephemeral: true });
+              const released = await releaseTicket(channel.id);
+              if (!released) return interaction.reply({ content: 'No se pudo liberar el ticket.', ephemeral: true });
+              const rolesToRestore = [...new Set([roleId, ...(panel?.panelCategories ?? []).flatMap(x => x.supportRoleIds ?? []), ...(panel?.readonlyRoleIds ?? [])].filter(Boolean))];
+              for (const rid of rolesToRestore) {
+                if (!channel.guild.roles.cache.has(rid)) continue;
+                const readOnly = (panel?.readonlyRoleIds ?? []).includes(rid);
+                await channel.permissionOverwrites.edit(rid, readOnly
+                  ? { ViewChannel: true, ReadMessageHistory: true, SendMessages: false }
+                  : { ViewChannel: true, ReadMessageHistory: true, SendMessages: true }).catch(() => {});
+              }
+              await channel.permissionOverwrites.delete(ticket.claimedBy).catch(() => {});
+              const rows = interaction.message.components.map(row => new ActionRowBuilder().addComponents(...row.components.map(component => {
+                if (component.customId === `adticket:release:${channel.id}`) return new ButtonBuilder().setCustomId(`adticket:claim:${channel.id}`).setLabel('Reclamar').setEmoji('🙋').setStyle(ButtonStyle.Success);
+                return ButtonBuilder.from(component);
+              })));
+              await interaction.message.edit({ components: rows }).catch(() => {});
+              return interaction.reply({ content: '🔓 Ticket liberado. Se restauró el acceso de los equipos configurados.', ephemeral: true });
             }
             if (action === 'assign') {
               if (ticket.status !== 'open') return interaction.reply({ content: 'No puedes reasignar un ticket cerrado.', ephemeral: true });
