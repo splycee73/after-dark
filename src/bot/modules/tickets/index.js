@@ -7,7 +7,7 @@ import {
 } from '../../../services/tickets.js';
 import { logger } from '../../../lib/logger.js';
 
-const supportOf = (member, cfg, t) => isSupport(member, { ...cfg, supportRoleIds: [...new Set([...(cfg.supportRoleIds ?? []), ...(t.panel_roles ?? [])])] }, { supportRoleIds: t.cat_roles ?? [] });
+const supportOf = (member, cfg, t) => isSupport(member, { ...cfg, supportRoleIds: t.panel_id ? (t.panel_roles ?? []) : (cfg.supportRoleIds ?? []) }, { supportRoleIds: t.cat_roles ?? [] });
 
 async function ticketOf(ctx) {
   const t = await getByChannel(ctx.channel.id);
