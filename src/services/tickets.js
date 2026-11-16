@@ -54,6 +54,10 @@ export async function claimTicket(channelId, userId) {
   const { rows: [row] } = await query('UPDATE tickets SET claimed_by=$2 WHERE channel_id=$1 AND status=\'open\' RETURNING id, claimed_by AS "claimedBy"', [channelId, userId]);
   return row ?? null;
 }
+export async function assignTicket(channelId, userId) {
+  const { rows: [row] } = await query("UPDATE tickets SET claimed_by=$2 WHERE channel_id=$1 AND status='open' RETURNING id, claimed_by AS \"claimedBy\"", [channelId, userId]);
+  return row ?? null;
+}
 export async function setTicketPriority(channelId, priority) {
   const { rows: [row] } = await query('UPDATE tickets SET priority=$2 WHERE channel_id=$1 AND status=\'open\' RETURNING id, priority', [channelId, priority]);
   return row ?? null;
