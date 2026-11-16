@@ -108,7 +108,13 @@ export async function sendPanelById(guild, id) {
     return b;
   })));
   const e = new EmbedBuilder().setColor(hexToInt(p.color)).setTitle(p.title).setDescription(p.description);
-  await ch.send({ embeds: [e], components: rows });
+  const payload = { embeds: [e], components: rows };
+  const previous = p.message_id ? await ch.messages.fetch(p.message_id).catch(() => null) : null;
+  if (previous) await previous.edit(payload);
+  else {
+    const message = await ch.send(payload);
+    await query('UPDATE ticket_panels SET message_id=$3 WHERE guild_id=$1 AND id=$2', [guild.id, id, message.id]);
+  }
   return { ok: true };
 }
 export async function openTicket({ guild, member, categoryId, panelId = null, answers = [] }) {
