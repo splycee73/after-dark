@@ -51,13 +51,13 @@ export function createGuildExtras2(client) {
     res.json(panel);
   }));
   r.put('/tickets/panels/:panelId', wrap(async (req, res) => {
-    if (!/^\\d+$/.test(req.params.panelId)) throw new EconomyError('ID de panel inválido.');
+    if (!/^\d+$/.test(req.params.panelId)) throw new EconomyError('ID de panel inválido.');
     const panel = await tickets.savePanel(req.guild, req.body, req.params.panelId);
     await audit(req.guild.id, req.session.user.id, 'tickets.panel.update', { id: panel.id });
     res.json(panel);
   }));
   r.delete('/tickets/panels/:panelId', wrap(async (req, res) => {
-    if (!/^\\d+$/.test(req.params.panelId)) throw new EconomyError('ID de panel inválido.');
+    if (!/^\d+$/.test(req.params.panelId)) throw new EconomyError('ID de panel inválido.');
     await tickets.deletePanel(req.guild.id, req.params.panelId);
     await audit(req.guild.id, req.session.user.id, 'tickets.panel.delete', { id: req.params.panelId });
     res.json({ ok: true });
