@@ -210,7 +210,9 @@ export default {
           if (!/^\d{17,20}$/.test(userId)) return interaction.reply({ content: 'ID de Discord inválido.', ephemeral: true });
           const target = await interaction.guild.members.fetch(userId).catch(() => null);
           if (!target) return interaction.reply({ content: 'El usuario no pertenece al servidor.', ephemeral: true });
+          if (roleId && !target.roles.cache.has(roleId) && !target.permissions.has(PermissionFlagsBits.ManageChannels)) return interaction.reply({ content: 'El nuevo responsable debe tener el rol de soporte configurado.', ephemeral: true });
           await assignTicket(channel.id, userId);
+          await channel.permissionOverwrites.edit(userId, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true });
           return interaction.reply({ content: `👥 Ticket reasignado a <@${userId}>.`, allowedMentions: { users: [userId] } });
         }
         if (interaction.isModalSubmit() && interaction.customId.startsWith('adticket:noteform:')) {
