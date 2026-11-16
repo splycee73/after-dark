@@ -23,7 +23,7 @@ async function names(guild, ids) {
 function validatePanel(body, guild) {
   const b = body ?? {};
   const clean = (v, max, fallback = '') => typeof v === 'string' ? v.trim().slice(0, max) : fallback;
-  const id = (v, coll) => typeof v === 'string' && /^\d{17,20}$/.test(v) && coll.cache.has(v) ? v : null;
+  const id = (v, coll) => typeof v === 'string' && /^\\d{17,20}$/.test(v) && coll.cache.has(v) ? v : null;
   const fields = Array.isArray(b.formFields) ? b.formFields.slice(0, 5).map((f, i) => ({
     label: clean(f?.label, 45, `Pregunta ${i + 1}`) || `Pregunta ${i + 1}`,
     placeholder: clean(f?.placeholder, 100), style: f?.style === 'paragraph' ? 'paragraph' : 'short',
@@ -33,6 +33,35 @@ function validatePanel(body, guild) {
   if (!clean(b.name, 60) || !panelChannelId) throw new EconomyError('El panel necesita un nombre y un canal de texto válido.');
   if (b.categoryId && !id(b.categoryId, guild.channels)) throw new EconomyError('Categoría inválida.');
   if (b.supportRoleId && !id(b.supportRoleId, guild.roles)) throw new EconomyError('Rol de soporte inválido.');
+  const panelCategories = Array.isArray(b.panelCategories) ? b.panelCategories.slice(0, 25).map((cat, i) => {
+    const channelId = cat?.channelId ? id(cat.channelId, guild.channels) : id(b.categoryId, guild.channels);
+    const supportRoleIds = Array.isArray(cat?.supportRoleIds) ? cat.supportRoleIds.filter(x => id(x, guild.roles)).slice(0, 10) : (b.supportRoleId ? [b.supportRoleId] : []);
+    const subcategories = Array.isArray(cat?.subcategories) ? cat.subcategories.slice(0, 25).map((sub,j) => ({
+      id: clean(sub?.id, 32) || `sub-${i}-${j}`,
+      label: clean(sub?.label, 80, `Subcategoría ${j+1}`) || `Subcategoría ${j+1}`,
+      description: clean(sub?.description, 100),
+      emoji: clean(sub?.emoji, 32) || null,
+    })) : [];
+    return {
+      id: clean(cat?.id, 32) || `category-${i}`,
+      label: clean(cat?.label, 80, `Categoría ${i+1}`) || `Categoría ${i+1}`,
+      description: clean(cat?.description, 100),
+      emoji: clean(cat?.emoji, 32) || null,
+      channelId,
+      supportRoleIds,
+      subcategories,
+      welcomeTitle: clean(cat?.welcomeTitle, 256),
+      welcomeMessage: clean(cat?.welcomeMessage, 3000),
+      formFields: Array.isArray(cat?.formFields) ? cat.formFields.slice(0,5).map((f,j)=>({
+        label: clean(f?.label,45,`Pregunta ${j+1}`) || `Pregunta ${j+1}`,
+        placeholder: clean(f?.placeholder,100), style: f?.style === 'paragraph' ? 'paragraph' : 'short',
+        required: f?.required !== false, maxLength: Math.min(1000,Math.max(1,Number(f?.maxLength)||300)),
+      })) : [],
+    };
+  }) : [];
+  const readonlyRoleIds = Array.isArray(b.readonlyRoleIds) ? b.readonlyRoleIds.filter(x => id(x, guild.roles)).slice(0, 10) : [];
+  const image = clean(b.panelImageUrl, 500);
+  if (image && !/^https:\/\//i.test(image)) throw new EconomyError('La imagen del panel debe usar una URL HTTPS.');
   return {
     name: clean(b.name, 60), panelChannelId, categoryId: id(b.categoryId, guild.channels), supportRoleId: id(b.supportRoleId, guild.roles),
     panelTitle: clean(b.panelTitle, 256, 'Centro de soporte') || 'Centro de soporte',
@@ -41,7 +70,8 @@ function validatePanel(body, guild) {
     color: /^#[0-9a-f]{6}$/i.test(b.color ?? '') ? b.color : '#8b5cf6',
     welcomeTitle: clean(b.welcomeTitle, 256, 'Ticket abierto') || 'Ticket abierto',
     welcomeMessage: clean(b.welcomeMessage, 3000, 'Hola {user}, describe tu consulta.'),
-    closeMessage: clean(b.closeMessage, 1000, 'Ticket cerrado por {user}.'), formFields: fields, active: b.active !== false,
+    closeMessage: clean(b.closeMessage, 1000, 'Ticket cerrado por {user}.'), formFields: fields,
+    panelCategories, readonlyRoleIds, panelImageUrl: image || null, panelFooter: clean(b.panelFooter, 200), active: b.active !== false,
   };
 }
 
