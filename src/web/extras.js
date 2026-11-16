@@ -99,7 +99,7 @@ export function createGuildExtras() {
   }));
 
   r.get('/tickets/:ticketId/transcript', wrap(async (req, res) => {
-    if (!/^\\d+$/.test(req.params.ticketId)) throw new EconomyError('ID de ticket inválido.');
+    if (!/^\d+$/.test(req.params.ticketId)) throw new EconomyError('ID de ticket inválido.');
     const ticket = await getTicketById(req.guild.id, req.params.ticketId);
     if (!ticket) throw new EconomyError('Ticket no encontrado.');
     const client = req.app.get('discordClient');
@@ -109,8 +109,8 @@ export function createGuildExtras() {
     const escapeHtml = (v) => String(v ?? '').replace(/[&<>"\']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "\'": '&#39;' }[ch]));
     const body = [...messages.values()].sort((a,b) => a.createdTimestamp - b.createdTimestamp).map((m) => {
       const files = [...m.attachments.values()].map((f) => `<a href="${escapeHtml(f.url)}">${escapeHtml(f.name || 'archivo')}</a>`).join(' · ');
-      return `<article><header>${escapeHtml(m.author?.tag || m.author?.username || 'Usuario')} · ${new Date(m.createdTimestamp).toLocaleString('es-ES')}</header><p>${escapeHtml(m.content).replace(/\\n/g, '<br>')}</p>${files ? `<p>${files}</p>` : ''}</article>`;
-    }).join('\\n');
+      return `<article><header>${escapeHtml(m.author?.tag || m.author?.username || 'Usuario')} · ${new Date(m.createdTimestamp).toLocaleString('es-ES')}</header><p>${escapeHtml(m.content).replace(/\n/g, '<br>')}</p>${files ? `<p>${files}</p>` : ''}</article>`;
+    }).join('\n');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="after-dark-ticket-${ticket.id}.html"`);
     res.send(`<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Ticket #${ticket.id}</title><style>body{font:15px system-ui;max-width:900px;margin:32px auto;padding:0 16px;background:#111827;color:#e5e7eb}article{padding:14px;border:1px solid #374151;border-radius:10px;margin:12px 0}header{color:#a5b4fc;font-size:13px}p{white-space:normal;overflow-wrap:anywhere}a{color:#93c5fd}</style><h1>AFTER DARK · Ticket #${ticket.id}</h1><p>Estado: ${escapeHtml(ticket.status)} · Prioridad: ${escapeHtml(ticket.priority || 'normal')}</p>${body}</html>`);
