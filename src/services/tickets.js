@@ -74,6 +74,12 @@ export async function listPanels(guildId) {
 }
 export async function savePanel(guild, body, id = null) {
   const v = cleanPanel(body, guild);
+  if (v.components.length) {
+    if (v.components.some((x) => !x.categoryId)) throw new EconomyError('Cada botón debe tener una categoría o subcategoría asignada.');
+    const ids = [...new Set(v.components.map((x) => x.categoryId))];
+    const { rows } = await query('SELECT id FROM ticket_categories WHERE guild_id=$1 AND enabled=true AND id=ANY($2::bigint[])', [guild.id, ids]);
+    if (rows.length !== ids.length) throw new EconomyError('Uno o más componentes apuntan a categorías inexistentes o desactivadas.');
+  }
   const args = [guild.id, v.name, v.channelId, v.title, v.description, v.color, v.supportRoleIds, v.welcomeMessage,
     v.closeMessage, v.claimEnabled, v.ownerCanClose, JSON.stringify(v.components), v.enabled];
   const sql = id
