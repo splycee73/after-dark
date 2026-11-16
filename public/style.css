@@ -64,3 +64,11 @@ option{background:#15131f}
 .ep-i{max-width:100%;border-radius:4px;margin-top:10px}.ep-ft{font-size:12px;color:#949ba4;margin-top:8px}
 .ep-btns{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}.ep-btn{background:#4e5058;padding:6px 14px;border-radius:4px;font-size:13px}
 @media(max-width:900px){.embed-grid{grid-template-columns:1fr}.sticky{position:static}}
+
+.ticket-editor-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);gap:24px;align-items:start;margin:22px 0}
+.ticket-editor-grid>.sticky{position:sticky;top:18px;padding:16px;border:1px solid var(--line);border-radius:16px;background:rgba(15,13,25,.72);backdrop-filter:blur(16px)}
+.ticket-editor-grid .row>*{min-width:0}
+.ticket-editor-grid .row input{flex:1}
+.ticket-editor-grid .ep{margin-bottom:10px}
+.ticket-editor-grid .ep-btns{flex-wrap:wrap}
+@media(max-width:900px){.ticket-editor-grid{grid-template-columns:1fr}.ticket-editor-grid>.sticky{position:static}}
