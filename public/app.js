@@ -204,26 +204,106 @@ async function counterExtras(g, { m }) {
 }
 
 async function ticketsExtras(g, { lists }) {
-  const list = await api(sg(g, '/tickets/list'));
-  return h('div', {},
-    h('div', { class: 'row', style: 'margin-top:18px' }, actionBtn('📨 Enviar panel de tickets', async () => { await api(sg(g, '/tickets/panel'), { method: 'POST', body: {} }); toast('Panel enviado'); }),
-      h('span', { class: 'muted' }, 'Guarda antes los cambios de configuración.')),
-    crudPanel(g, lists, {
-      title: '📂 Categorías', base: '/tickets/categories',
-      cols: [['Nombre', (r) => `${r.emoji} ${r.name}`], ['Preguntas', (r) => r.questions.length], ['Activa', (r) => (r.enabled ? 'Sí' : 'No')]],
-      fields: [
-        { key: 'name', label: 'Nombre', type: 'string', max: 80 }, { key: 'emoji', label: 'Emoji (ej: 🎫)', type: 'string', max: 60 },
-        { key: 'description', label: 'Descripción (se muestra en el panel)', type: 'string', max: 100 },
-        { key: 'parentId', label: 'Categoría de Discord donde se crean', type: 'category' },
-        { key: 'supportRoleIds', label: 'Roles de soporte extra', type: 'roles' },
-        { key: 'welcomeMessage', label: 'Mensaje de bienvenida (vacío = el general)', type: 'textarea' },
-        { key: 'questions', label: 'Preguntas del formulario (una por línea, máx. 5)', type: 'lines' },
-        { key: 'enabled', label: 'Activa', type: 'bool', def: true },
-      ],
-    }),
-    h('h3', {}, '🎟️ Últimos tickets'),
-    table(['#', 'Dueño', 'Categoría', 'Estado', 'Valoración', 'Fecha', ''], list.map((t) => [t.number, t.ownerName, t.category ?? '—', t.status, t.rating ? '⭐'.repeat(t.rating) : '—', when(t.at),
-      t.hasTranscript ? h('a', { class: 'btn ghost', href: `/api${sg(g, `/tickets/${t.id}/transcript`)}`, download: '' }, 'Transcripción') : ''])));
+  let panels = await api(sg(g, '/tickets/panels'));
+  let categories = await api(sg(g, '/tickets/categories'));
+  const tickets = await api(sg(g, '/tickets/list'));
+  let editing = null;
+  const blank = () => ({ name: '', channelId: null, title: '🎫 Centro de soporte', description: 'Selecciona una opción para abrir un ticket.', color: '#8b5cf6',
+    supportRoleIds: [], welcomeMessage: 'Hola {user}, el equipo te atenderá pronto.', closeMessage: 'Este ticket fue cerrado por {closer}. Motivo: {reason}',
+    claimEnabled: true, ownerCanClose: false, components: [], enabled: true });
+  let data = blank();
+  const root = h('div', {});
+  const panelList = h('div');
+  const editor = h('div');
+  const preview = h('div');
+  const componentList = h('div');
+  const set = (k, v) => { data[k] = v; drawPreview(); };
+  const field = (label, key, type, extra = {}) => {
+    const f = { key, label, type, ...extra };
+    const el = mkInput(f, data[key], lists);
+    el.addEventListener(type === 'bool' ? 'change' : 'input', () => { data[key] = readInput(f, el); drawPreview(); });
+    return fieldRow(f, el);
+  };
+  function drawPreview() {
+    preview.replaceChildren(
+      h('div', { class: 'ep' }, h('div', { class: 'ep-bar', style: `background:${data.color}` }),
+        h('div', { class: 'ep-body' }, h('div', { class: 'ep-t' }, data.title || 'Título del panel'),
+          h('div', { class: 'ep-d' }, data.description || 'Descripción del panel'))),
+      h('div', { class: 'ep-btns' }, data.components.map((x) => h('span', { class: 'ep-btn' }, `${x.emoji ? x.emoji + ' ' : ''}${x.label || 'Botón'}`))));
+  }
+  function drawComponents() {
+    componentList.replaceChildren(...data.components.map((x, i) => {
+      const label = h('input', { value: x.label, placeholder: 'Texto del botón' });
+      const emoji = h('input', { value: x.emoji || '', placeholder: 'Emoji' });
+      const cat = selectEl(categories.filter((c) => c.enabled).map((c) => [c.id, c.name]), x.categoryId);
+      const style = h('select', {}, [['Primary','Azul'],['Secondary','Gris'],['Success','Verde'],['Danger','Rojo']].map(([v,n]) => h('option', { value:v, selected:x.style===v }, n)));
+      label.addEventListener('input', () => { x.label = label.value; drawPreview(); });
+      emoji.addEventListener('input', () => { x.emoji = emoji.value; drawPreview(); });
+      cat.addEventListener('change', () => { x.categoryId = cat.value; });
+      style.addEventListener('change', () => { x.style = style.value; });
+      return h('div', { class: 'glass', style: 'padding:12px;margin:10px 0' },
+        h('div', { class: 'row' }, label, emoji, h('button', { class: 'btn ghost', onclick: () => { data.components.splice(i,1); drawComponents(); drawPreview(); } }, '✕')),
+        h('label', {}, 'Categoría que abre'), cat, h('label', {}, 'Estilo'), style);
+    }));
+    drawPreview();
+  }
+  function loadPanel(p) { editing = p?.id ?? null; data = p ? { ...blank(), ...p, components: (p.components || []).map(x => ({...x})) } : blank(); drawEditor(); }
+  function drawEditor() {
+    editor.replaceChildren(
+      h('h3', {}, editing ? 'Editar panel' : 'Crear panel'),
+      field('Nombre interno','name','string',{max:80}),
+      field('Canal donde se publica','channelId','channel'),
+      field('Título del mensaje','title','string',{max:256}),
+      field('Descripción del mensaje','description','textarea',{max:4000}),
+      field('Color','color','color'),
+      field('Roles de staff de este panel','supportRoleIds','roles'),
+      field('Mensaje que recibe el usuario','welcomeMessage','textarea',{max:1000}),
+      field('Mensaje al cerrar','closeMessage','textarea',{max:500}),
+      field('Permitir reclamar','claimEnabled','bool'),
+      field('Activo','enabled','bool'),
+      h('h3', {}, 'Componentes del panel'),
+      componentList,
+      h('button', { class:'btn ghost', onclick: () => { if(data.components.length>=25) return toast('Máximo 25 botones'); data.components.push({type:'category',label:'Nueva opción',emoji:'🎫',categoryId:categories[0]?.id ?? null,style:'Primary'}); drawComponents(); } }, '+ Añadir botón/categoría'),
+      h('div', { class:'row', style:'margin-top:16px' },
+        actionBtn(editing ? 'Guardar panel' : 'Crear panel', async () => {
+          if (!data.name.trim()) return toast('Escribe un nombre para el panel','err');
+          const body = { ...data, components: data.components.map(x => ({...x, categoryId:x.categoryId || null})) };
+          await api(sg(g, '/tickets/panels' + (editing ? '/' + editing : '')), { method: editing ? 'PUT':'POST', body });
+          toast('Panel guardado'); panels = await api(sg(g,'/tickets/panels')); drawPanelList(); loadPanel(null);
+        }),
+        editing ? h('button',{class:'btn ghost',onclick:()=>loadPanel(null)},'Cancelar') : null));
+    drawComponents();
+  }
+  function drawPanelList() {
+    panelList.replaceChildren(h('h3',{},'Paneles guardados'),
+      ...panels.map(p => h('div',{class:'row',style:'align-items:center;justify-content:space-between'},
+        h('span',{}, `🎫 ${p.name} · ${p.enabled?'Activo':'Desactivado'}`),
+        h('span',{class:'row'},h('button',{class:'btn ghost',onclick:()=>loadPanel(p)},'Editar'),
+          actionBtn('Publicar',async()=>{await api(sg(g,`/tickets/panels/${p.id}/send`),{method:'POST',body:{}});toast('Panel publicado');}),
+          h('button',{class:'btn ghost',onclick:async()=>{if(!confirm('¿Eliminar este panel?'))return;await api(sg(g,`/tickets/panels/${p.id}`),{method:'DELETE'});panels=await api(sg(g,'/tickets/panels'));drawPanelList();}},'🗑')))));
+  }
+  const categoryPanel = crudPanel(g, lists, {
+    title:'📂 Categorías y subcategorías', base:'/tickets/categories',
+    cols:[['Nombre',r=>`${r.emoji} ${r.name}`],['Panel',r=>panels.find(p=>p.id===String(r.panelId))?.name||'Principal'],['Tipo',r=>r.parentCategoryId?'Subcategoría':'Categoría'],['Preguntas',r=>r.questions.length],['Activa',r=>r.enabled?'Sí':'No']],
+    fields:[
+      {key:'name',label:'Nombre',type:'string',max:80},{key:'emoji',label:'Emoji',type:'string',max:60},
+      {key:'description',label:'Descripción',type:'string',max:100},{key:'panelId',label:'Panel al que pertenece',type:'select',options:panels.map(p=>[p.id,p.name])},
+      {key:'parentCategoryId',label:'Subcategoría de (vacío = principal)',type:'select',options:categories.map(x=>[x.id,x.name])},
+      {key:'buttonLabel',label:'Texto del botón',type:'string',max:80},{key:'buttonStyle',label:'Estilo del botón',type:'select',options:[['Primary','Azul'],['Secondary','Gris'],['Success','Verde'],['Danger','Rojo']],def:'Primary'},
+      {key:'parentId',label:'Categoría de Discord donde se crean',type:'category'},
+      {key:'supportRoleIds',label:'Roles de soporte adicionales',type:'roles'},
+      {key:'welcomeMessage',label:'Mensaje personalizado del ticket',type:'textarea'},
+      {key:'questions',label:'Preguntas (una por línea, máximo 5)',type:'lines'},
+      {key:'enabled',label:'Activa',type:'bool',def:true}
+    ]
+  });
+  const grid = h('div',{class:'ticket-editor-grid'},h('div',{},editor),h('div',{class:'sticky'},h('h3',{},'Vista previa en vivo'),preview));
+  drawPanelList(); drawEditor(); drawPreview();
+  root.append(h('h2',{},'🎫 Centro de tickets'),h('p',{class:'muted'},'Cada panel mantiene sus propios mensajes, componentes y equipo de soporte.'),
+    panelList,grid,categoryPanel,h('h3',{},'🎟️ Historial de tickets'),
+    table(['#','Dueño','Categoría','Estado','Reclamado por','Valoración','Fecha',''],tickets.map(t=>[t.number,t.ownerName,t.category??'—',t.status,t.claimedBy??'—',t.rating?'⭐'.repeat(t.rating):'—',when(t.at),
+      t.hasTranscript?h('a',{class:'btn ghost',href:`/api${sg(g,`/tickets/${t.id}/transcript`)}`,download:''},'Transcripción'):''])));
+  return root;
 }
 
 async function moderationExtras(g) {
