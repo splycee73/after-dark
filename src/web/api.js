@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { ChannelType } from 'discord.js';
+import { ChannelType, PermissionFlagsBits } from 'discord.js';
 import { config } from '../config.js';
 import { query } from '../db/pool.js';
 import { MODULE_KEYS } from '../modules.js';
