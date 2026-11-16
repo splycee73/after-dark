@@ -15,13 +15,15 @@ export async function publishTicketPanel(client, guild, panel) {
   const channel = guild.channels.cache.get(panel.panelChannelId);
   if (!channel || !channel.isTextBased()) throw new Error('El canal del panel no existe o no es de texto.');
   const e = new EmbedBuilder().setColor(colorOf(panel.color)).setTitle(panel.panelTitle).setDescription(panel.panelDescription);
+  if (panel.panelImageUrl) e.setImage(panel.panelImageUrl);
+  if (panel.panelFooter) e.setFooter({ text: panel.panelFooter });
   let row;
   if (panel.panelCategories?.length) {
     const menu = new StringSelectMenuBuilder().setCustomId(`adticket:category:${panel.id}`)
       .setPlaceholder('Seleccione su categoría').addOptions(panel.panelCategories.slice(0,25).map(cat => ({
         label: cat.label.slice(0,100), value: cat.id.slice(0,100),
         ...(cat.description ? { description: cat.description.slice(0,100) } : {}),
-        ...(cat.emoji ? { emoji: cat.emoji } : {}),
+        ...(cat.emoji ? { emoji: { name: cat.emoji } } : {}),
       })));
     row = new ActionRowBuilder().addComponents(menu);
   } else {
@@ -48,7 +50,6 @@ async function makeTicket(interaction, panel, answers = {}, selectedCategory = n
   const categoryId = selectedCategory?.channelId || panel?.categoryId;
   const category = categoryId && guild.channels.cache.get(categoryId);
   const supportRoleIds = [...new Set([roleId, ...(selectedCategory?.supportRoleIds ?? [])].filter(x => x && guild.roles.cache.has(x)))];
-  const readonlyRoleIds = [...new Set((panel?.readonlyRoleIds ?? []).filter(x => guild.roles.cache.has(x)))];
   const perms = [
     { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
     { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles] },
@@ -162,7 +163,7 @@ export default {
                 .setPlaceholder('Seleccione una subcategoría').addOptions(category.subcategories.slice(0,25).map(sub => ({
                   label: sub.label.slice(0,100), value: sub.id.slice(0,100),
                   ...(sub.description ? { description: sub.description.slice(0,100) } : {}),
-                  ...(sub.emoji ? { emoji: sub.emoji } : {}),
+                  ...(sub.emoji ? { emoji: { name: sub.emoji } } : {}),
                 })));
               return interaction.reply({ content: `**${category.label}**\\nAhora selecciona una subcategoría:`, components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
             }
