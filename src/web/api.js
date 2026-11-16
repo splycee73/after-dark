@@ -55,10 +55,17 @@ export function createApi(client) {
       .map((c) => ({ id: c.id, name: c.name, nsfw: c.nsfw })),
   ));
 
-  r.get('/guilds/:id/roles', (req, res) => res.json(
-    req.guild.roles.cache.filter((x) => x.id !== req.guild.id && !x.managed)
-      .map((x) => ({ id: x.id, name: x.name, color: x.hexColor })),
-  ));
+  r.get('/guilds/:id/roles', (req, res) => {
+    const bot = req.guild.members.me;
+    const roles = req.guild.roles.cache.filter((x) => x.id !== req.guild.id && !x.managed);
+    const basic = roles.map((x) => ({ id: x.id, name: x.name, color: x.hexColor }));
+    const assignableRole = roles.filter((x) => bot && x.editable && !x.permissions.has([
+      PermissionFlagsBits.Administrator, PermissionFlagsBits.ManageGuild, PermissionFlagsBits.ManageRoles,
+      PermissionFlagsBits.ManageChannels, PermissionFlagsBits.BanMembers, PermissionFlagsBits.KickMembers,
+      PermissionFlagsBits.ModerateMembers, PermissionFlagsBits.ManageWebhooks, PermissionFlagsBits.ManageMessages,
+    ])).map((x) => ({ id: x.id, name: x.name, color: x.hexColor }));
+    res.json(basic.map((r) => ({ ...r, assignable: assignableRole.some((a) => a.id === r.id) })));
+  });
 
   r.put('/guilds/:id/modules/:module', wrap(async (req, res) => {
     const { module } = req.params;
