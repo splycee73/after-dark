@@ -56,7 +56,7 @@ async function handle(i) {
     const cat = await categories.get(i.guild.id, arg);
     if (!cat || !cat.enabled) return i.reply({ content: 'Esta categoría ya no existe.', ephemeral: true });
     if (cat.questions.length) {
-      const modal = new ModalBuilder().setCustomId(`tk:form:${cat.id}`).setTitle(cat.name.slice(0, 45));
+      const modal = new ModalBuilder().setCustomId(`tk:form:${cat.id}:${panelId ?? ''}`).setTitle(cat.name.slice(0, 45));
       cat.questions.forEach((q, idx) => modal.addComponents(new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId(`q${idx}`).setLabel(q).setStyle(TextInputStyle.Paragraph).setRequired(true).setMaxLength(1000))));
       return i.showModal(modal);
@@ -83,7 +83,7 @@ async function handle(i) {
     return i.reply({ content: `🙋 <@${i.user.id}> reclamó este ticket.`, allowedMentions: { parse: [] } });
   }
   if (action === 'close') {
-    if (!support && i.user.id !== t.owner_id) return i.reply({ content: 'No puedes cerrar este ticket.', ephemeral: true });
+    if (!support) return i.reply({ content: 'Solo el staff autorizado puede cerrar este ticket.', ephemeral: true });
     await i.reply({ content: '🔒 Cerrando ticket…' });
     return closeTicket({ client: i.client, guild: i.guild, channel: i.channel, ticket: t, closer: i.user, reason: 'Cerrado con el botón' });
   }
