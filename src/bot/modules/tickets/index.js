@@ -95,7 +95,7 @@ async function handle(i) {
 }
 
 export default {
-  commands: [add, remove, close],
+  commands: [close],
   events: [{
     name: Events.InteractionCreate,
     async execute(_client, i) {
