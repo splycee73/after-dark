@@ -1,6 +1,6 @@
 import {
   PermissionFlagsBits, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle,
-  ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder,
+  ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, StringSelectMenuBuilder,
 } from 'discord.js';
 import { defineCommand, embed } from '../../lib/command.js';
 import { getModuleState } from '../../../services/guilds.js';
@@ -15,9 +15,20 @@ export async function publishTicketPanel(client, guild, panel) {
   const channel = guild.channels.cache.get(panel.panelChannelId);
   if (!channel || !channel.isTextBased()) throw new Error('El canal del panel no existe o no es de texto.');
   const e = new EmbedBuilder().setColor(colorOf(panel.color)).setTitle(panel.panelTitle).setDescription(panel.panelDescription);
-  const button = new ButtonBuilder().setCustomId(`adticket:open:${panel.id}`).setLabel(panel.buttonLabel.slice(0, 80)).setStyle(ButtonStyle.Primary);
-  if (panel.buttonEmoji) button.setEmoji(panel.buttonEmoji);
-  const row = new ActionRowBuilder().addComponents(button);
+  let row;
+  if (panel.panelCategories?.length) {
+    const menu = new StringSelectMenuBuilder().setCustomId(`adticket:category:${panel.id}`)
+      .setPlaceholder('Seleccione su categoría').addOptions(panel.panelCategories.slice(0,25).map(cat => ({
+        label: cat.label.slice(0,100), value: cat.id.slice(0,100),
+        ...(cat.description ? { description: cat.description.slice(0,100) } : {}),
+        ...(cat.emoji ? { emoji: cat.emoji } : {}),
+      })));
+    row = new ActionRowBuilder().addComponents(menu);
+  } else {
+    const button = new ButtonBuilder().setCustomId(`adticket:open:${panel.id}`).setLabel(panel.buttonLabel.slice(0, 80)).setStyle(ButtonStyle.Primary);
+    if (panel.buttonEmoji) button.setEmoji(panel.buttonEmoji);
+    row = new ActionRowBuilder().addComponents(button);
+  }
   let msg = null;
   if (panel.messageId) msg = await channel.messages.fetch(panel.messageId).catch(() => null);
   if (msg) await msg.edit({ embeds: [e], components: [row] });
@@ -26,7 +37,7 @@ export async function publishTicketPanel(client, guild, panel) {
   return msg;
 }
 
-async function makeTicket(interaction, panel, answers = {}) {
+async function makeTicket(interaction, panel, answers = {}, selectedCategory = null) {
   const guild = interaction.guild;
   const existing = guild.channels.cache.find((c) => c.topic?.includes(`ticket-owner:${interaction.user.id}`) && c.topic?.includes('ticket-status:open'));
   if (existing) {
@@ -34,7 +45,10 @@ async function makeTicket(interaction, panel, answers = {}) {
     return interaction.reply({ content: `Ya tienes un ticket abierto: <#${existing.id}>.`, ephemeral: true });
   }
   const roleId = panel?.supportRoleId;
-  const category = panel?.categoryId && guild.channels.cache.get(panel.categoryId);
+  const categoryId = selectedCategory?.channelId || panel?.categoryId;
+  const category = categoryId && guild.channels.cache.get(categoryId);
+  const supportRoleIds = [...new Set([roleId, ...(selectedCategory?.supportRoleIds ?? [])].filter(x => x && guild.roles.cache.has(x)))];
+  const readonlyRoleIds = [...new Set((panel?.readonlyRoleIds ?? []).filter(x => guild.roles.cache.has(x)))];
   const perms = [
     { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
     { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles] },
@@ -52,11 +66,11 @@ async function makeTicket(interaction, panel, answers = {}) {
     permissionOverwrites: perms, reason: `Ticket abierto por ${interaction.user.tag}`,
   });
   try {
-    const row = await createTicket(guild.id, channel.id, interaction.user.id, panel?.id ?? null, answers);
+    const row = await createTicket(guild.id, channel.id, interaction.user.id, panel?.id ?? null, { ...answers, ...(selectedCategory ? { category: selectedCategory.label, subcategory: selectedCategory.selectedSubcategory || null } : {}) });
     const intro = panel
-      ? fill(panel.welcomeMessage, { user: `<@!${interaction.user.id}>`, username: interaction.user.username, server: guild.name, ticket: String(row.id) })
+      ? fill(selectedCategory?.welcomeMessage || panel.welcomeMessage, { user: `<@!${interaction.user.id}>`, username: interaction.user.username, server: guild.name, ticket: String(row.id) })
       : 'Describe tu problema con el mayor detalle posible. El equipo te atenderá pronto.';
-    const title = panel ? fill(panel.welcomeTitle, { user: interaction.user.username, username: interaction.user.username, server: guild.name, ticket: String(row.id) }) : `🎫 Ticket #${row.id}`;
+    const title = panel ? fill(selectedCategory?.welcomeTitle || panel.welcomeTitle, { user: interaction.user.username, username: interaction.user.username, server: guild.name, ticket: String(row.id) }) : `🎫 Ticket #${row.id}`;
     const description = [intro, ...Object.entries(answers).map(([k, v]) => `**${k}:** ${v}`)].join('\\n\\n');
     const close = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(`adticket:claim:${channel.id}`).setLabel('Reclamar').setEmoji('🙋').setStyle(ButtonStyle.Success),
@@ -65,9 +79,9 @@ async function makeTicket(interaction, panel, answers = {}) {
       new ButtonBuilder().setCustomId(`adticket:note:${channel.id}`).setLabel('Nota interna').setEmoji('📝').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId(`adticket:close:${channel.id}`).setLabel('Cerrar').setEmoji('🔒').setStyle(ButtonStyle.Danger));
     await channel.send({
-      content: `<@!${interaction.user.id}> ${roleId ? `<@&${roleId}>` : ''}`,
+      content: `<@!${interaction.user.id}> ${supportRoleIds.map(r => `<@&${r}>`).join(' ')}`,
       embeds: [new EmbedBuilder().setColor(colorOf(panel?.color)).setTitle(title).setDescription(description.slice(0, 4000))],
-      components: [close], allowedMentions: { users: [interaction.user.id], roles: roleId ? [roleId] : [] },
+      components: [close], allowedMentions: { users: [interaction.user.id], roles: supportRoleIds },
     });
     await interaction.reply({ content: `✅ Tu ticket está listo: <#${channel.id}>.`, ephemeral: true });
   } catch (error) {
@@ -136,6 +150,33 @@ export default {
     async execute(client, interaction) {
       if (!interaction.inGuild()) return;
       try {
+        if (interaction.isStringSelectMenu()) {
+          const parts = interaction.customId.split(':');
+          if (parts[1] === 'category') {
+            const panel = await getTicketPanel(parts[2], interaction.guild.id);
+            if (!panel?.active) return interaction.reply({ content: 'Este panel ya no está disponible.', ephemeral: true });
+            const category = (panel.panelCategories || []).find(x => x.id === interaction.values[0]);
+            if (!category) return interaction.reply({ content: 'Categoría no encontrada.', ephemeral: true });
+            if (category.subcategories?.length) {
+              const menu = new StringSelectMenuBuilder().setCustomId(`adticket:subcategory:${panel.id}:${category.id}`)
+                .setPlaceholder('Seleccione una subcategoría').addOptions(category.subcategories.slice(0,25).map(sub => ({
+                  label: sub.label.slice(0,100), value: sub.id.slice(0,100),
+                  ...(sub.description ? { description: sub.description.slice(0,100) } : {}),
+                  ...(sub.emoji ? { emoji: sub.emoji } : {}),
+                })));
+              return interaction.reply({ content: `**${category.label}**\\nAhora selecciona una subcategoría:`, components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
+            }
+            return makeTicket(interaction, panel, {}, category);
+          }
+          if (parts[1] === 'subcategory') {
+            const panel = await getTicketPanel(parts[2], interaction.guild.id);
+            if (!panel?.active) return interaction.reply({ content: 'Este panel ya no está disponible.', ephemeral: true });
+            const category = (panel.panelCategories || []).find(x => x.id === parts[3]);
+            const sub = category?.subcategories?.find(x => x.id === interaction.values[0]);
+            if (!category || !sub) return interaction.reply({ content: 'Subcategoría no encontrada.', ephemeral: true });
+            return makeTicket(interaction, panel, {}, { ...category, selectedSubcategory: sub.label });
+          }
+        }
         if (interaction.isButton()) {
           const [, action, id] = interaction.customId.split(':');
           if (action === 'open') {
