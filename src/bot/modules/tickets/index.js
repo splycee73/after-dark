@@ -39,6 +39,21 @@ export async function publishTicketPanel(client, guild, panel) {
   return msg;
 }
 
+async function showTicketForm(interaction, panel, category = null, subcategory = null) {
+  const fields = category?.formFields?.length ? category.formFields : panel.formFields;
+  if (!fields?.length) return makeTicket(interaction, panel, {}, category ? { ...category, selectedSubcategory: subcategory?.label || null } : null);
+  const modal = new ModalBuilder()
+    .setCustomId(`adticket:form:${panel.id}:${category?.id || '_'}:${subcategory?.id || '_'}`)
+    .setTitle((category?.label || panel.name).slice(0,45));
+  const rows = fields.slice(0,5).map((f,i)=>new ActionRowBuilder().addComponents(
+    new TextInputBuilder().setCustomId(`field${i}`).setLabel(f.label.slice(0,45))
+      .setStyle(f.style === 'paragraph' ? TextInputStyle.Paragraph : TextInputStyle.Short)
+      .setRequired(f.required !== false).setMaxLength(Math.min(1000,Math.max(1,f.maxLength||300)))
+      .setPlaceholder((f.placeholder||'').slice(0,100))));
+  modal.addComponents(...rows);
+  return interaction.showModal(modal);
+}
+
 async function makeTicket(interaction, panel, answers = {}, selectedCategory = null) {
   const guild = interaction.guild;
   const existing = guild.channels.cache.find((c) => c.topic?.includes(`ticket-owner:${interaction.user.id}`) && c.topic?.includes('ticket-status:open'));
@@ -167,7 +182,7 @@ export default {
                 })));
               return interaction.reply({ content: `**${category.label}**\\nAhora selecciona una subcategoría:`, components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
             }
-            return makeTicket(interaction, panel, {}, category);
+            return showTicketForm(interaction, panel, category);
           }
           if (parts[1] === 'subcategory') {
             const panel = await getTicketPanel(parts[2], interaction.guild.id);
@@ -175,7 +190,7 @@ export default {
             const category = (panel.panelCategories || []).find(x => x.id === parts[3]);
             const sub = category?.subcategories?.find(x => x.id === interaction.values[0]);
             if (!category || !sub) return interaction.reply({ content: 'Subcategoría no encontrada.', ephemeral: true });
-            return makeTicket(interaction, panel, {}, { ...category, selectedSubcategory: sub.label });
+            return showTicketForm(interaction, panel, category, sub);
           }
         }
         if (interaction.isButton()) {
@@ -185,17 +200,7 @@ export default {
             if (!state.enabled) return interaction.reply({ content: 'El sistema de tickets está desactivado.', ephemeral: true });
             const panel = await getTicketPanel(id, interaction.guild.id);
             if (!panel?.active) return interaction.reply({ content: 'Este panel ya no está disponible.', ephemeral: true });
-            if (panel.formFields?.length) {
-              const modal = new ModalBuilder().setCustomId(`adticket:form:${panel.id}`).setTitle(panel.name.slice(0, 45));
-              const rows = panel.formFields.slice(0, 5).map((f, i) => new ActionRowBuilder().addComponents(
-                new TextInputBuilder().setCustomId(`field${i}`).setLabel(f.label.slice(0, 45))
-                  .setStyle(f.style === 'paragraph' ? TextInputStyle.Paragraph : TextInputStyle.Short)
-                  .setRequired(f.required !== false).setMaxLength(Math.min(1000, Math.max(1, f.maxLength || 300)))
-                  .setPlaceholder((f.placeholder || '').slice(0, 100))));
-              modal.addComponents(...rows);
-              return interaction.showModal(modal);
-            }
-            return makeTicket(interaction, panel);
+            return showTicketForm(interaction, panel);
           }
           if (['claim','release','assign','priority','note','archive'].includes(action)) {
             const channel = interaction.guild.channels.cache.get(id);
@@ -309,11 +314,14 @@ export default {
           return interaction.reply({ content: '📝 Nota interna guardada. No se publicó en el canal.', ephemeral: true });
         }
         if (interaction.isModalSubmit() && interaction.customId.startsWith('adticket:form:')) {
-          const id = interaction.customId.split(':')[2];
+          const [, , id, categoryId, subcategoryId] = interaction.customId.split(':');
           const panel = await getTicketPanel(id, interaction.guild.id);
           if (!panel?.active) return interaction.reply({ content: 'Este panel ya no está disponible.', ephemeral: true });
-          const answers = Object.fromEntries(panel.formFields.slice(0,5).map((f,i) => [f.label, interaction.fields.getTextInputValue(`field${i}`)]));
-          return makeTicket(interaction, panel, answers);
+          const category = categoryId && categoryId !== '_' ? (panel.panelCategories || []).find(x => x.id === categoryId) : null;
+          const subcategory = subcategoryId && subcategoryId !== '_' ? category?.subcategories?.find(x => x.id === subcategoryId) : null;
+          const fields = category?.formFields?.length ? category.formFields : panel.formFields;
+          const answers = Object.fromEntries(fields.slice(0,5).map((f,i) => [f.label, interaction.fields.getTextInputValue(`field${i}`)]));
+          return makeTicket(interaction, panel, answers, category ? { ...category, selectedSubcategory: subcategory?.label || null } : null);
         }
       } catch (error) {
         if (interaction.isRepliable() && !interaction.replied && !interaction.deferred)
