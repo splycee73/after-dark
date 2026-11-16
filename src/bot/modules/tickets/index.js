@@ -7,7 +7,7 @@ import {
 } from '../../../services/tickets.js';
 import { logger } from '../../../lib/logger.js';
 
-const supportOf = (member, cfg, t) => isSupport(member, cfg, { supportRoleIds: t.cat_roles ?? [] });
+const supportOf = (member, cfg, t) => isSupport(member, { ...cfg, supportRoleIds: [...new Set([...(cfg.supportRoleIds ?? []), ...(t.panel_roles ?? [])])] }, { supportRoleIds: t.cat_roles ?? [] });
 
 async function ticketOf(ctx) {
   const t = await getByChannel(ctx.channel.id);
@@ -50,7 +50,7 @@ async function handle(i) {
   const st = await getModuleState(i.guild.id, 'tickets');
   if (!st.enabled) return i.reply({ content: 'El sistema de tickets está desactivado.', ephemeral: true });
   const cfg = st.config;
-  const [, action, arg] = i.customId.split(':');
+  const [, action, arg, panelId] = i.customId.split(':');
 
   if (action === 'open') {
     const cat = await categories.get(i.guild.id, arg);
@@ -62,7 +62,7 @@ async function handle(i) {
       return i.showModal(modal);
     }
     await i.deferReply({ ephemeral: true });
-    const { channel } = await openTicket({ guild: i.guild, member: i.member, categoryId: cat.id });
+    const { channel } = await openTicket({ guild: i.guild, member: i.member, categoryId: cat.id, panelId: panelId ?? null });
     return i.editReply(`✅ Tu ticket está listo: <#${channel.id}>`);
   }
   if (action === 'form') {
@@ -70,7 +70,7 @@ async function handle(i) {
     if (!cat) return i.reply({ content: 'Esta categoría ya no existe.', ephemeral: true });
     const answers = cat.questions.map((_, idx) => i.fields.getTextInputValue(`q${idx}`));
     await i.deferReply({ ephemeral: true });
-    const { channel } = await openTicket({ guild: i.guild, member: i.member, categoryId: cat.id, answers });
+    const { channel } = await openTicket({ guild: i.guild, member: i.member, categoryId: cat.id, panelId: panelId ?? null, answers });
     return i.editReply(`✅ Tu ticket está listo: <#${channel.id}>`);
   }
 
