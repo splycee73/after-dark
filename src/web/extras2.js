@@ -74,8 +74,8 @@ export function createGuildExtras2(client) {
   }));
   r.get('/tickets/list', wrap(async (req, res) => {
     const rows = await tickets.recentTickets(req.guild.id, 25);
-    const m = await names(req.guild, rows.map((x) => x.ownerId));
-    res.json(rows.map((x) => ({ ...x, ownerName: m.get(x.ownerId)?.displayName ?? x.ownerId })));
+    const m = await names(req.guild, rows.flatMap((x) => [x.ownerId, x.claimedBy].filter(Boolean)));
+    res.json(rows.map((x) => ({ ...x, ownerName: m.get(x.ownerId)?.displayName ?? x.ownerId, claimedByName: x.claimedBy ? (m.get(x.claimedBy)?.displayName ?? x.claimedBy) : null })));
   }));
   r.get('/tickets/:tid/transcript', wrap(async (req, res) => {
     const t = await tickets.getTranscript(req.guild.id, req.params.tid);
