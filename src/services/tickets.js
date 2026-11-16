@@ -35,7 +35,7 @@ export const isSupport = (member, cfg, cat) =>
 
 export async function getByChannel(channelId) {
   const { rows: [t] } = await query(
-    `SELECT t.*, c.support_role_ids AS cat_roles FROM tickets t LEFT JOIN ticket_categories c ON c.id = t.category_id WHERE t.channel_id=$1`, [channelId]);
+    `SELECT t.*, c.support_role_ids AS cat_roles, p.support_role_ids AS panel_roles FROM tickets t LEFT JOIN ticket_categories c ON c.id = t.category_id LEFT JOIN ticket_panels p ON p.id=t.panel_id WHERE t.channel_id=$1`, [channelId]);
   return t ?? null;
 }
 
@@ -205,9 +205,9 @@ export async function closeTicket({ client, guild, channel, ticket, closer, reas
     }
   }
   await channel.permissionOverwrites.edit(t.owner_id, { ViewChannel: false }).catch(() => {});
-  const del = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('tk:delete').setLabel('Eliminar canal').setEmoji('🗑️').setStyle(ButtonStyle.Danger));
+  const { rows: [panelCfg] } = t.panel_id ? await query('SELECT close_message FROM ticket_panels WHERE id=$1', [t.panel_id]) : { rows: [] };\n  const del = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('tk:delete').setLabel('Eliminar canal').setEmoji('🗑️').setStyle(ButtonStyle.Danger));
   await channel.send({
-    embeds: [new EmbedBuilder().setColor(0xf87171).setDescription(render(cfg.closeMessage, { closer: `<@${closer.id}>`, reason: why }))],
+    embeds: [new EmbedBuilder().setColor(0xf87171).setDescription(render(panelCfg?.close_message || cfg.closeMessage, { closer: `<@${closer.id}>`, reason: why }))],
     components: [del], allowedMentions: { parse: [] },
   });
   emitLog(guild.id, 'ticket', { title: `🔒 Ticket #${t.number} cerrado`, description: `Cerrado por <@${closer.id}> · dueño <@${t.owner_id}>\nMotivo: ${why}` });
