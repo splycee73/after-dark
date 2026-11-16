@@ -54,9 +54,7 @@ async function makeTicket(interaction, panel, answers = {}) {
       ? fill(panel.welcomeMessage, { user: `<@!${interaction.user.id}>`, username: interaction.user.username, server: guild.name, ticket: String(row.id) })
       : 'Describe tu problema con el mayor detalle posible. El equipo te atenderá pronto.';
     const title = panel ? fill(panel.welcomeTitle, { user: interaction.user.username, username: interaction.user.username, server: guild.name, ticket: String(row.id) }) : `🎫 Ticket #${row.id}`;
-    const description = [intro, ...Object.entries(answers).map(([k,v]) => `**${k}:** ${v}`)].join('
-
-');
+    const description = [intro, ...Object.entries(answers).map(([k, v]) => `**${k}:** ${v}`)].join('\\n\\n');
     const close = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(`adticket:claim:${channel.id}`).setLabel('Reclamar').setEmoji('🙋').setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId(`adticket:assign:${channel.id}`).setLabel('Reasignar').setEmoji('👥').setStyle(ButtonStyle.Secondary),
