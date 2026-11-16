@@ -87,7 +87,7 @@ async function makeTicket(interaction, panel, answers = {}, selectedCategory = n
       ? fill(selectedCategory?.welcomeMessage || panel.welcomeMessage, { user: `<@!${interaction.user.id}>`, username: interaction.user.username, server: guild.name, ticket: String(row.id) })
       : 'Describe tu problema con el mayor detalle posible. El equipo te atenderá pronto.';
     const title = panel ? fill(selectedCategory?.welcomeTitle || panel.welcomeTitle, { user: interaction.user.username, username: interaction.user.username, server: guild.name, ticket: String(row.id) }) : `🎫 Ticket #${row.id}`;
-    const description = [intro, ...Object.entries(answers).map(([k, v]) => `**${k}:** ${v}`)].join('\\n\\n');
+    const description = [intro, ...Object.entries(answers).map(([k, v]) => `**${k}:** ${v}`)].join('\n\n');
     const close = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(`adticket:claim:${channel.id}`).setLabel('Reclamar').setEmoji('🙋').setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId(`adticket:assign:${channel.id}`).setLabel('Reasignar').setEmoji('👥').setStyle(ButtonStyle.Secondary),
@@ -182,7 +182,7 @@ export default {
                   ...(sub.description ? { description: sub.description.slice(0,100) } : {}),
                   ...(sub.emoji ? { emoji: { name: sub.emoji } } : {}),
                 })));
-              return interaction.reply({ content: `**${category.label}**\\nAhora selecciona una subcategoría:`, components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
+              return interaction.reply({ content: `**${category.label}**\nAhora selecciona una subcategoría:`, components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
             }
             return showTicketForm(interaction, panel, category);
           }
