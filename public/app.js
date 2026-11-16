@@ -114,7 +114,7 @@ function readInput(f, el) {
   if (t === 'lines') return el.value.split('\n').map((s) => s.trim()).filter(Boolean);
   return el.value;
 }
-const fieldRow = (f, el) => (f.type === 'bool' ? h('label', { class: 'chk' }, el, f.label) : [h('label', {}, f.label), el]);
+const fieldRow = (f, el) => (f.type === 'bool' ? h('label', { class: 'chk' }, el, f.label) : h('div', { class: 'field' }, h('label', {}, f.label), el));
 
 /* ---------- Panel genérico de módulo (formulario desde el esquema) ---------- */
 async function modulePanel(m, g, content) {
