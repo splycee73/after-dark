@@ -19,8 +19,8 @@ export const categories = entity({
     { key: 'welcomeMessage', col: 'welcome_message', type: 'str', max: 500, label: 'Mensaje de bienvenida' },
     { key: 'questions', col: 'questions', type: 'lines', max: 5, maxLen: 45, label: 'Preguntas del formulario' },
     { key: 'enabled', col: 'enabled', type: 'bool', def: true, label: 'Activa' },
-    { key: 'panelId', col: 'panel_id', type: 'int', min: 1, max: 2147483647, label: 'Panel' },
-    { key: 'parentCategoryId', col: 'parent_category_id', type: 'int', min: 1, max: 2147483647, label: 'Subcategoría de' },
+    { key: 'panelId', col: 'panel_id', type: 'int', min: 1, max: 2147483647, nullable: true, def: null, label: 'Panel' },
+    { key: 'parentCategoryId', col: 'parent_category_id', type: 'int', min: 1, max: 2147483647, nullable: true, def: null, label: 'Subcategoría de' },
     { key: 'buttonLabel', col: 'button_label', type: 'str', max: 80, label: 'Texto del botón' },
     { key: 'buttonStyle', col: 'button_style', type: 'str', max: 20, label: 'Estilo del botón' },
   ],
@@ -160,7 +160,7 @@ export async function sendPanelById(guild, id) {
 export async function claimTicket({ ticket, member }) {
   const { rowCount } = await query("UPDATE tickets SET claimed_by=$2, claimed_at=now() WHERE id=$1 AND claimed_by IS NULL AND status='open'", [ticket.id, member.id]);
   if (!rowCount) throw new EconomyError('Este ticket ya fue reclamado o está cerrado.');
-  const { rows: [t] } = await query('SELECT t.*, p.support_role_ids AS panel_roles FROM tickets t LEFT JOIN ticket_panels p ON p.id=t.panel_id WHERE t.id=$1', [ticket.id]);
+  const { rows: [t] } = await query('SELECT t.*, p.support_role_ids AS panel_roles, c.support_role_ids AS cat_roles FROM tickets t LEFT JOIN ticket_panels p ON p.id=t.panel_id LEFT JOIN ticket_categories c ON c.id=t.category_id WHERE t.id=$1', [ticket.id]);
   const roles = [...new Set([...(t.panel_roles ?? []), ...(t.cat_roles ?? [])])];
   for (const roleId of roles) await member.guild.channels.cache.get(t.channel_id)?.permissionOverwrites.edit(roleId, { ViewChannel: false }).catch(() => {});
   await member.guild.channels.cache.get(t.channel_id)?.permissionOverwrites.edit(member.id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true, AttachFiles: true }).catch(() => {});
