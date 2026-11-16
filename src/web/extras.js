@@ -105,9 +105,9 @@ export function createGuildExtras() {
     const client = req.app.get('discordClient');
     const channel = await client.channels.fetch(ticket.channelId).catch(() => null);
     if (!channel || !channel.isTextBased() || !channel.messages) throw new EconomyError('El canal del ticket ya no está disponible.');
-    const messages = await channel.messages.fetch({ limit: 100 });
+    const collected = []; let before;\n    for (let page = 0; page < 10; page++) {\n      const batch = await channel.messages.fetch({ limit: 100, ...(before ? { before } : {}) });\n      if (!batch.size) break;\n      collected.push(...batch.values()); before = batch.last().id;\n      if (batch.size < 100) break;\n    }\n    const messages = collected;
     const escapeHtml = (v) => String(v ?? '').replace(/[&<>"\']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "\'": '&#39;' }[ch]));
-    const body = [...messages.values()].sort((a,b) => a.createdTimestamp - b.createdTimestamp).map((m) => {
+    const body = [...messages].sort((a,b) => a.createdTimestamp - b.createdTimestamp).map((m) => {
       const files = [...m.attachments.values()].map((f) => `<a href="${escapeHtml(f.url)}">${escapeHtml(f.name || 'archivo')}</a>`).join(' · ');
       return `<article><header>${escapeHtml(m.author?.tag || m.author?.username || 'Usuario')} · ${new Date(m.createdTimestamp).toLocaleString('es-ES')}</header><p>${escapeHtml(m.content).replace(/\n/g, '<br>')}</p>${files ? `<p>${files}</p>` : ''}</article>`;
     }).join('\n');
