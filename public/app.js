@@ -94,10 +94,14 @@ function selectEl(opts, val, { multiple = false, empty = '— ninguno —' } = {
   return sel;
 }
 function rolePicker(options, value, safe = false) {
-  const selected = new Set(Array.isArray(value) ? value : []);
+  const allowed = new Set(options.map(([id]) => id));
+  const incoming = Array.isArray(value) ? value : [];
+  const hiddenCount = incoming.filter((id) => !allowed.has(id)).length;
+  const selected = new Set(incoming.filter((id) => allowed.has(id)));
   const root = h('div', { class: 'role-picker' });
   const search = h('input', { class: 'role-picker-search', placeholder: '🔎 Buscar rol por nombre…' });
   const summary = h('div', { class: 'role-picker-summary' });
+  const notice = hiddenCount ? h('p', { class: 'role-picker-notice' }, `Se omitieron ${hiddenCount} rol(es) no disponibles o no seguros para esta selección.`) : null;
   const list = h('div', { class: 'role-picker-list' });
   const draw = () => {
     const q = search.value.trim().toLocaleLowerCase();
@@ -112,7 +116,7 @@ function rolePicker(options, value, safe = false) {
     summary.textContent = selected.size ? `${selected.size} rol(es) seleccionado(s)` : 'Ningún rol seleccionado';
   };
   search.addEventListener('input', draw);
-  root.append(search, summary, list);
+  root.append(search, summary, ...(notice ? [notice] : []), list);
   root._getSelected = () => [...selected];
   draw();
   return root;
