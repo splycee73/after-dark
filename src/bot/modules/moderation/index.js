@@ -121,14 +121,31 @@ const clearwarnsCmd = defineCommand({
     await ctx.reply({ embeds: [embed('🧹 Avisos borrados', `Se borraron los avisos de <@${ctx.args.usuario.id}>.`)] });
   },
 });
-const purge = defineCommand({
-  name: 'purge', description: 'Borra mensajes recientes del canal (máx. 100)', module: M, aliases: ['clear'], perms: [P.ManageMessages], defer: 'ephemeral',
-  options: [{ name: 'cantidad', type: 'int', description: 'Cantidad de mensajes', required: true }],
+const clear = defineCommand({
+  name: 'clear', description: 'Elimina entre 1 y 100 mensajes recientes del canal', module: M, aliases: ['purge'], perms: [P.ManageMessages], defer: 'ephemeral',
+  options: [{ name: 'cantidad', type: 'int', description: 'Cantidad de mensajes (1-100)', required: true }],
   async run(ctx) {
-    const n = Math.min(100, Math.max(1, ctx.args.cantidad));
-    const del = await ctx.channel.bulkDelete(n, true).catch(() => { throw new EconomyError('No pude borrar mensajes (¿tengo el permiso?).'); });
-    emitLog(ctx.guild.id, 'mod_action', { title: '🧹 Purge', color: RED, description: `<@${ctx.user.id}> borró **${del.size}** mensajes en <#${ctx.channel.id}>.` });
-    await ctx.reply({ content: `🧹 Borré **${del.size}** mensajes.`, ephemeral: true });
+    const n = ctx.args.cantidad;
+    if (!Number.isInteger(n) || n < 1 || n > 100) {
+      throw new EconomyError('Indica una cantidad entre 1 y 100 mensajes.');
+    }
+    if (!ctx.channel?.bulkDelete) {
+      throw new EconomyError('Este comando solo funciona en canales de texto compatibles.');
+    }
+    const del = await ctx.channel.bulkDelete(n, true).catch((error) => {
+      if (error?.code === 50013) throw new EconomyError('No tengo permiso para administrar mensajes en este canal.');
+      throw new EconomyError('No pude borrar los mensajes. Comprueba mis permisos e inténtalo de nuevo.');
+    });
+    const skipped = n - del.size;
+    emitLog(ctx.guild.id, 'mod_action', {
+      title: '🧹 Mensajes eliminados',
+      color: RED,
+      description: `Moderador: <@${ctx.user.id}>\\nCanal: <#${ctx.channel.id}>\\nEliminados: **${del.size}**${skipped > 0 ? `\\nOmitidos (por antigüedad u otras restricciones): **${skipped}**` : ''}`,
+    });
+    await ctx.reply({
+      content: `🧹 Se eliminaron **${del.size}** mensajes.${skipped > 0 ? ` Se omitieron **${skipped}** mensajes (Discord no permite borrar mensajes de más de 14 días mediante borrado masivo).` : ''}`,
+      ephemeral: true,
+    });
   },
 });
 const slowmode = defineCommand({
@@ -199,6 +216,6 @@ async function automod(client, m) {
 }
 
 export default {
-  commands: [ban, unban, kick, timeout, untimeout, warn, warnings, clearwarnsCmd, purge, slowmode, lockFn('lock', 'Bloquea el canal actual', false), lockFn('unlock', 'Desbloquea el canal actual', null)],
+  commands: [ban, unban, kick, timeout, untimeout, warn, warnings, clearwarnsCmd, clear, slowmode, lockFn('lock', 'Bloquea el canal actual', false), lockFn('unlock', 'Desbloquea el canal actual', null)],
   events: [{ name: Events.MessageCreate, execute: automod }],
 };
