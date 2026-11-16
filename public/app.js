@@ -172,6 +172,8 @@ async function ticketsExtras(g, { channels, roles }) {
     const label = h('input',{maxlength:80,placeholder:'Ej. Soporte general',value:cat.label||''});
     const description = h('input',{maxlength:100,placeholder:'Breve descripción',value:cat.description||''});
     const emoji = h('input',{maxlength:32,placeholder:'Emoji opcional',value:cat.emoji||''});
+    const welcomeTitle = h('input',{maxlength:256,placeholder:'Título del mensaje dentro del ticket',value:cat.welcomeTitle||''});
+    const welcomeMessage = h('textarea',{rows:3,placeholder:'Mensaje personalizado al abrir esta categoría'}); welcomeMessage.value=cat.welcomeMessage||'';
     const channel = selectOf(categoryOptions,cat.channelId||null,'— categoría de Discord —');
     const team = h('select',{multiple:true,size:3},roleOptions.map(([v,n])=>h('option',{value:v,selected:(cat.supportRoleIds||[]).includes(v)},n)));
     const subs = h('textarea',{rows:3,placeholder:'Subcategorías, una por línea. Ej. Problema técnico\\nConsulta general'});
@@ -182,7 +184,7 @@ async function ticketsExtras(g, { channels, roles }) {
       h('label',{},'Categoría de Discord donde crear tickets'),channel,
       h('label',{},'Roles que atenderán esta categoría (puedes seleccionar varios)'),team,
       h('label',{},'Subcategorías (una por línea)'),subs);
-    row.readCategory=()=>({id:cat.id||('cat-'+Math.random().toString(36).slice(2,10)),label:label.value.trim(),description:description.value.trim(),emoji:emoji.value.trim(),channelId:channel.value||null,supportRoleIds:[...team.selectedOptions].map(x=>x.value),subcategories:subs.value.split('\\n').map((v,i)=>v.trim()).filter(Boolean).slice(0,25).map((v,i)=>({id:'sub-'+i+'-'+v.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,16),label:v}))});
+    row.readCategory=()=>({id:cat.id||('cat-'+Math.random().toString(36).slice(2,10)),label:label.value.trim(),description:description.value.trim(),emoji:emoji.value.trim(),welcomeTitle:welcomeTitle.value.trim(),welcomeMessage:welcomeMessage.value.trim(),channelId:channel.value||null,supportRoleIds:[...team.selectedOptions].map(x=>x.value),subcategories:subs.value.split('\\n').map((v,i)=>v.trim()).filter(Boolean).slice(0,25).map((v,i)=>({id:'sub-'+i+'-'+v.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,16),label:v}))});
     categoryRows.append(row);
   };
   const addField = (f = {}) => {
@@ -204,7 +206,7 @@ async function ticketsExtras(g, { channels, roles }) {
     supportRoleId: selectOf(roleOptions, null, '— rol de soporte —'),
     panelTitle: h('input', { maxlength: 256 }), panelDescription: h('textarea', { rows: 3, maxlength: 4000 }),
     buttonLabel: h('input', { maxlength: 80 }), buttonEmoji: h('input', { maxlength: 32, placeholder: 'Emoji opcional: 🎫' }),
-    color: h('input', { type: 'color' }),
+    color: h('input', { type: 'color' }), panelImageUrl: h('input',{maxlength:500,placeholder:'https://...'}), panelFooter: h('input',{maxlength:200,placeholder:'Pie del panel'}),
     welcomeTitle: h('input', { maxlength: 256 }), welcomeMessage: h('textarea', { rows: 4, maxlength: 3000 }),
     closeMessage: h('textarea', { rows: 2, maxlength: 1000 }),
     active: h('input', { type: 'checkbox', class: 'sw' }),
@@ -255,7 +257,7 @@ async function ticketsExtras(g, { channels, roles }) {
         h('h3',{},'Diseño del panel'),
         h('label',{},'Título'), controls.panelTitle, h('label',{},'Descripción'), controls.panelDescription,
         h('label',{},'Texto del botón'), controls.buttonLabel, h('label',{},'Emoji del botón'), controls.buttonEmoji,
-        h('label',{},'Color del embed'), controls.color,
+        h('label',{},'Color del embed'), controls.color, h('label',{},'Imagen del panel (URL HTTPS)'), controls.panelImageUrl, h('label',{},'Pie del panel'), controls.panelFooter,
         h('h3',{},'Mensaje al abrir ticket'),
         h('label',{},'Título de bienvenida'), controls.welcomeTitle,
         h('label',{},'Mensaje de bienvenida'), controls.welcomeMessage,
