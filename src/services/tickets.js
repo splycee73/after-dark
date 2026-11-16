@@ -105,8 +105,13 @@ export async function sendPanelById(guild, id) {
 }
 \nexport async function openTicket({ guild, member, categoryId, panelId = null, answers = [] }) {
   const { config: cfg } = await getModuleState(guild.id, 'tickets');
+  const { rows: [panel] } = panelId ? await query('SELECT * FROM ticket_panels WHERE guild_id=$1 AND id=$2 AND enabled=true', [guild.id, panelId]) : { rows: [] };
+  if (panelId && !panel) throw new EconomyError('Este panel ya no está disponible.');
   const cat = await categories.get(guild.id, categoryId);
-  if (!cat || !cat.enabled) throw new EconomyError('Esta categoría ya no está disponible.');\n  if (cat.parentCategoryId) throw new EconomyError('Selecciona una categoría principal.');\n  const panelRoles = panel?.support_role_ids ?? cfg.supportRoleIds;
+  if (!cat || !cat.enabled) throw new EconomyError('Esta categoría ya no está disponible.');
+  if (cat.parentCategoryId) throw new EconomyError('Selecciona una subcategoría.');
+  if (cat.panelId && panel && String(cat.panelId) !== String(panel.id)) throw new EconomyError('Esta categoría no pertenece a ese panel.');
+  const panelRoles = panel?.support_role_ids ?? cfg.supportRoleIds;
 
   const ticket = await withTx(async (c) => {
     await c.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`ticket:${guild.id}`]);
@@ -115,8 +120,8 @@ export async function sendPanelById(guild, id) {
       if (n.n >= cfg.maxPerUser) throw new EconomyError(`Ya tienes ${n.n} ticket(s) abierto(s) (máximo ${cfg.maxPerUser}).`);
     }
     return (await c.query(
-      `INSERT INTO tickets (guild_id, number, category_id, owner_id, answers)
-       VALUES ($1, (SELECT COALESCE(MAX(number),0)+1 FROM tickets WHERE guild_id=$1), $2, $3, $4) RETURNING *`,
+      `INSERT INTO tickets (guild_id, number, category_id, owner_id, answers, panel_id)
+       VALUES ($1, (SELECT COALESCE(MAX(number),0)+1 FROM tickets WHERE guild_id=$1), $2, $3, $4, $5) RETURNING *`,
       [guild.id, cat.id, member.id, JSON.stringify(answers), panel?.id ?? null])).rows[0];
   });
 
@@ -136,7 +141,7 @@ export async function sendPanelById(guild, id) {
         { id: guild.members.me.id, allow: [...allow, P.ManageChannels, P.ManageMessages] },
       ],
     });
-  } catch (e) {
+  } catch {
     await query('DELETE FROM tickets WHERE id=$1', [ticket.id]);
     throw new EconomyError('No pude crear el canal del ticket. Revisa que el bot tenga el permiso "Gestionar canales".');
   }
