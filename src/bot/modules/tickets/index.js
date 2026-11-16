@@ -171,6 +171,8 @@ export default {
         if (interaction.isStringSelectMenu()) {
           const parts = interaction.customId.split(':');
           if (parts[1] === 'category') {
+            const state = await getModuleState(interaction.guild.id, MODULE);
+            if (!state.enabled) return interaction.reply({ content: 'El sistema de tickets está desactivado.', ephemeral: true });
             const panel = await getTicketPanel(parts[2], interaction.guild.id);
             if (!panel?.active) return interaction.reply({ content: 'Este panel ya no está disponible.', ephemeral: true });
             const category = (panel.panelCategories || []).find(x => x.id === interaction.values[0]);
@@ -187,6 +189,8 @@ export default {
             return showTicketForm(interaction, panel, category);
           }
           if (parts[1] === 'subcategory') {
+            const state = await getModuleState(interaction.guild.id, MODULE);
+            if (!state.enabled) return interaction.reply({ content: 'El sistema de tickets está desactivado.', ephemeral: true });
             const panel = await getTicketPanel(parts[2], interaction.guild.id);
             if (!panel?.active) return interaction.reply({ content: 'Este panel ya no está disponible.', ephemeral: true });
             const category = (panel.panelCategories || []).find(x => x.id === parts[3]);
