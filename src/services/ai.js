@@ -1,19 +1,19 @@
 import { config } from '../config.js';
 import { query } from '../db/pool.js';
 
-// After Dark utiliza exclusivamente Gemini.
+// After Dark utiliza exclusivamente Gemini 3.8 Flash.
 export const provider = () => (config.geminiApiKey ? 'gemini' : null);
 export const aiConfigured = () => Boolean(config.geminiApiKey);
 
-async function viaGemini({ model, system, messages, maxTokens }) {
+async function viaGemini({ system, messages, maxTokens }) {
   if (!config.geminiApiKey) {
     throw new Error('Falta configurar GEMINI_API_KEY en las variables de entorno.');
   }
 
-  const requestedModel = typeof model === 'string' ? model : '';
-  const m = requestedModel.startsWith('gemini') ? requestedModel : 'gemini-3.8-flash';
+  // Ignora modelos antiguos guardados en la configuración de cada servidor.
+  const model = 'gemini-3.8-flash';
 
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent`, {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
