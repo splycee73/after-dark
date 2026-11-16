@@ -50,6 +50,10 @@ export async function getTicketById(guildId, id) {
   const { rows: [row] } = await query('SELECT id, guild_id AS "guildId", channel_id AS "channelId", opener_id AS "openerId", status, claimed_by AS "claimedBy", priority, archived_at AS "archivedAt", created_at AS "createdAt" FROM tickets WHERE guild_id=$1 AND id=$2', [guildId, id]);
   return row ?? null;
 }
+export async function getTicketByChannel(guildId, channelId) {
+  const { rows: [row] } = await query('SELECT id, guild_id AS "guildId", channel_id AS "channelId", opener_id AS "openerId", panel_id AS "panelId", status, claimed_by AS "claimedBy", priority, archived_at AS "archivedAt" FROM tickets WHERE guild_id=$1 AND channel_id=$2', [guildId, channelId]);
+  return row ?? null;
+}
 export async function claimTicket(channelId, userId) {
   const { rows: [row] } = await query('UPDATE tickets SET claimed_by=$2 WHERE channel_id=$1 AND status=\'open\' RETURNING id, claimed_by AS "claimedBy"', [channelId, userId]);
   return row ?? null;
