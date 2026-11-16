@@ -4,7 +4,7 @@ import { audit } from '../services/guilds.js';
 import { EconomyError, credit, leaderboard, recentTransactions } from '../services/economy.js';
 import { listItems, createItem, updateItem, deleteItem } from '../services/store.js';
 import { getCounter, setCounter } from '../services/counter.js';
-import { listTickets, ticketCounts, listTicketPanels, saveTicketPanel, deleteTicketPanel, getTicketPanel, getTicketById } from '../services/tickets.js';
+import { listTickets, ticketCounts, listTicketPanels, saveTicketPanel, deleteTicketPanel, getTicketPanel, getTicketById, listTicketNotes, addTicketNote } from '../services/tickets.js';
 import { publishTicketPanel } from '../bot/modules/tickets/index.js';
 
 const wrap = (fn) => (req, res) => fn(req, res).catch((e) => {
@@ -98,6 +98,21 @@ export function createGuildExtras() {
     res.json({ counts, tickets });
   }));
 
+  r.get('/tickets/:ticketId/notes', wrap(async (req, res) => {
+    if (!/^\d+$/.test(req.params.ticketId)) throw new EconomyError('ID de ticket inválido.');
+    const ticket = await getTicketById(req.guild.id, req.params.ticketId);
+    if (!ticket) throw new EconomyError('Ticket no encontrado.');
+    res.json(await listTicketNotes(req.guild.id, ticket.id));
+  }));
+  r.post('/tickets/:ticketId/notes', wrap(async (req, res) => {
+    if (!/^\d+$/.test(req.params.ticketId)) throw new EconomyError('ID de ticket inválido.');
+    const ticket = await getTicketById(req.guild.id, req.params.ticketId);
+    const content = typeof req.body?.content === 'string' ? req.body.content.trim() : '';
+    if (!ticket || !content || content.length > 2000) throw new EconomyError('Ticket o nota inválidos (máximo 2000 caracteres).');
+    const note = await addTicketNote(req.guild.id, ticket.id, req.session.user.id, content);
+    await audit(req.guild.id, req.session.user.id, 'tickets.note.create', { ticketId: ticket.id });
+    res.json(note);
+  }));
   r.get('/tickets/:ticketId/transcript', wrap(async (req, res) => {
     if (!/^\d+$/.test(req.params.ticketId)) throw new EconomyError('ID de ticket inválido.');
     const ticket = await getTicketById(req.guild.id, req.params.ticketId);
