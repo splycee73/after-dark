@@ -44,6 +44,29 @@ export function createGuildExtras2(client) {
 
   // --- Tickets ---
   crud(r, '/tickets/categories', tickets.categories, 'tickets.category');
+  r.get('/tickets/panels', wrap(async (req, res) => res.json(await tickets.listPanels(req.guild.id))));
+  r.post('/tickets/panels', wrap(async (req, res) => {
+    const panel = await tickets.savePanel(req.guild, req.body);
+    await audit(req.guild.id, req.session.user.id, 'tickets.panel.create', { id: panel.id });
+    res.json(panel);
+  }));
+  r.put('/tickets/panels/:panelId', wrap(async (req, res) => {
+    if (!/^\\d+$/.test(req.params.panelId)) throw new EconomyError('ID de panel inválido.');
+    const panel = await tickets.savePanel(req.guild, req.body, req.params.panelId);
+    await audit(req.guild.id, req.session.user.id, 'tickets.panel.update', { id: panel.id });
+    res.json(panel);
+  }));
+  r.delete('/tickets/panels/:panelId', wrap(async (req, res) => {
+    if (!/^\\d+$/.test(req.params.panelId)) throw new EconomyError('ID de panel inválido.');
+    await tickets.deletePanel(req.guild.id, req.params.panelId);
+    await audit(req.guild.id, req.session.user.id, 'tickets.panel.delete', { id: req.params.panelId });
+    res.json({ ok: true });
+  }));
+  r.post('/tickets/panels/:panelId/send', wrap(async (req, res) => {
+    await tickets.sendPanelById(req.guild, req.params.panelId);
+    await audit(req.guild.id, req.session.user.id, 'tickets.panel.send', { id: req.params.panelId });
+    res.json({ ok: true });
+  }));
   r.post('/tickets/panel', wrap(async (req, res) => {
     await tickets.sendPanel(req.guild);
     await audit(req.guild.id, req.session.user.id, 'tickets.panel', {});
