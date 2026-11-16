@@ -93,38 +93,61 @@ function selectEl(opts, val, { multiple = false, empty = '— ninguno —' } = {
   for (const [id, name] of opts) sel.append(h('option', { value: id, selected: multiple ? (val || []).includes(id) : id === val }, name));
   return sel;
 }
-function rolePicker(options, value, safe = false) {
+function rolePicker(options, value, safe = false, multiple = true) {
   const allowed = new Set(options.map(([id]) => id));
-  const incoming = Array.isArray(value) ? value : [];
+  const incoming = multiple ? (Array.isArray(value) ? value : []) : (value ? [value] : []);
   const hiddenCount = incoming.filter((id) => !allowed.has(id)).length;
   const selected = new Set(incoming.filter((id) => allowed.has(id)));
   const root = h('div', { class: 'role-picker' });
+  const trigger = h('button', { type: 'button', class: 'btn ghost role-picker-trigger' }, '＋ Seleccionar roles');
   const search = h('input', { class: 'role-picker-search', placeholder: '🔎 Buscar rol por nombre…' });
   const summary = h('div', { class: 'role-picker-summary' });
+  const chosen = h('div', { class: 'role-picker-chosen' });
   const notice = hiddenCount ? h('p', { class: 'role-picker-notice' }, `Se omitieron ${hiddenCount} rol(es) no disponibles o no seguros para esta selección.`) : null;
   const list = h('div', { class: 'role-picker-list' });
+  search.style.display = 'none';
+  list.style.display = 'none';
+  const update = () => {
+    summary.textContent = selected.size ? (multiple ? `${selected.size} rol(es) seleccionado(s)` : '1 rol seleccionado') : (multiple ? 'Ningún rol seleccionado' : 'Ningún rol seleccionado');
+    trigger.textContent = list.style.display === 'none'
+      ? (selected.size ? `✎ Editar selección · ${selected.size}` : (multiple ? '＋ Seleccionar roles' : '＋ Seleccionar rol'))
+      : 'Cerrar selector';
+    chosen.replaceChildren(...[...selected].map((id) => {
+      const name = options.find(([rid]) => rid === id)?.[1] || id;
+      return h('span', { class: 'role-picker-chip' }, name,
+        h('button', { type: 'button', title: 'Quitar rol', onclick: () => { selected.delete(id); draw(); } }, '×'));
+    }));
+  };
   const draw = () => {
     const q = search.value.trim().toLocaleLowerCase();
     list.replaceChildren(...options.filter(([id, name]) => name.toLocaleLowerCase().includes(q) || id.includes(q)).map(([id, name]) => {
       const check = h('input', { type: 'checkbox' }); check.checked = selected.has(id);
-      check.addEventListener('change', () => { check.checked ? selected.add(id) : selected.delete(id); update(); });
+      check.addEventListener('change', () => {
+        if (check.checked) { if (!multiple) selected.clear(); selected.add(id); }
+        else selected.delete(id);
+        draw();
+      });
       return h('label', { class: 'role-picker-item' }, check, h('span', {}, name));
     }));
     update();
   };
-  const update = () => {
-    summary.textContent = selected.size ? `${selected.size} rol(es) seleccionado(s)` : 'Ningún rol seleccionado';
-  };
+  trigger.addEventListener('click', () => {
+    const opening = list.style.display === 'none';
+    search.style.display = opening ? '' : 'none';
+    list.style.display = opening ? '' : 'none';
+    if (opening) search.focus();
+    update();
+  });
   search.addEventListener('input', draw);
-  root.append(search, summary, ...(notice ? [notice] : []), list);
-  root._getSelected = () => [...selected];
+  root.append(trigger, summary, chosen, ...(notice ? [notice] : []), search, list);
+  root._getSelected = () => multiple ? [...selected] : ([...selected][0] || null);
   draw();
   return root;
 }
 function mkInput(f, val, lists) {
   const t = f.type;
   if (t === 'bool') { const e = h('input', { type: 'checkbox', class: 'sw' }); e.checked = !!val; return e; }
-  if (t === 'channel' || t === 'role' || t === 'category') return selectEl(lists[t], val);
+  if (t === 'channel' || t === 'category') return selectEl(lists[t], val);\n  if (t === 'role') return rolePicker(lists.role, val, false, false);
   if (t === 'roles') return rolePicker(lists.role, val);
   if (t === 'assignableRoles') return rolePicker(lists.assignableRole || [], val, true);
   if (t === 'select') return selectEl(f.options, val, { empty: '—' });
@@ -138,8 +161,8 @@ function readInput(f, el) {
   const t = f.type;
   if (t === 'bool') return el.checked;
   if (t === 'int' || t === 'number') return el.value === '' ? null : Number(el.value);
-  if (t === 'roles' || t === 'assignableRoles') return el._getSelected?.() ?? [];
-  if (t === 'channel' || t === 'role' || t === 'category' || t === 'select') return el.value || null;
+  if (t === 'roles' || t === 'assignableRoles') return el._getSelected?.() ?? [];\n  if (t === 'role') return el._getSelected?.() ?? null;
+  if (t === 'channel' || t === 'category' || t === 'select') return el.value || null;
   if (t === 'lines') return el.value.split('\n').map((s) => s.trim()).filter(Boolean);
   return el.value;
 }
