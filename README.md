@@ -13,7 +13,7 @@ Un solo servicio Node.js (bot + API + dashboard) y PostgreSQL.
 - [x] Economía: `.work`, `.daily`, `.weekly`, `.rob`, `.pay`, `.balance`, `.top`, `.history`.
 - [x] Store: `.store`, `.buy`, artículos, roles temporales e inventario.
 - [x] Contador configurable.
-- [x] Tickets privados: `.ticket` y `.close`, registro y panel de actividad.
+- [x] Tickets privados: paneles configurables con formularios, archivado, transcripciones HTML, asignación, prioridad y notas internas.
 - [x] Logs: mensajes editados/eliminados, miembros, canales y baneos.
 - [x] Alertas: picos de entradas y menciones masivas (detección y aviso, no bloqueo automático).
 - [x] Moderación: ban, kick, timeout, warn e historial de advertencias (con jerarquía de roles).
