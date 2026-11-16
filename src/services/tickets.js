@@ -111,7 +111,7 @@ export async function sendPanelById(guild, id) {
   await ch.send({ embeds: [e], components: rows });
   return { ok: true };
 }
-\nexport async function openTicket({ guild, member, categoryId, panelId = null, answers = [] }) {
+export async function openTicket({ guild, member, categoryId, panelId = null, answers = [] }) {
   const { config: cfg } = await getModuleState(guild.id, 'tickets');
   const { rows: [panel] } = panelId ? await query('SELECT * FROM ticket_panels WHERE guild_id=$1 AND id=$2 AND enabled=true', [guild.id, panelId]) : { rows: [] };
   if (panelId && !panel) throw new EconomyError('Este panel ya no está disponible.');
