@@ -72,3 +72,13 @@ option{background:#15131f}
 .ticket-editor-grid .ep{margin-bottom:10px}
 .ticket-editor-grid .ep-btns{flex-wrap:wrap}
 @media(max-width:900px){.ticket-editor-grid{grid-template-columns:1fr}.ticket-editor-grid>.sticky{position:static}}
+
+.role-picker{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+.role-picker-search{width:100%}
+.role-picker-summary{font-size:12px;color:var(--muted)}
+.role-picker-notice{font-size:12px;color:var(--warn);margin:0}
+.role-picker-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:230px;overflow:auto;padding:9px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.12)}
+.role-picker-item{display:flex;align-items:center;gap:8px;min-width:0;padding:7px 9px;border:1px solid var(--line);border-radius:9px;cursor:pointer}
+.role-picker-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.role-picker-item input{accent-color:var(--accent);flex:0 0 auto}
+@media(max-width:650px){.role-picker-list{grid-template-columns:1fr}}
