@@ -278,8 +278,8 @@ async function aiExtras(g) {
 const feedExtras = (path, text) => (g) => h('div', { style: 'margin-top:18px' },
   actionBtn('▶️ Publicar ahora', async () => { const r = await api(sg(g, path), { method: 'POST', body: {} }); toast(`Publicaciones enviadas: ${r.posted}`); }),
   h('p', { class: 'muted' }, text));
-const anime18Extras = (g) => h('div', {}, h('p', { class: 'warn', style: 'margin-top:16px' }, '🔞 Solo para canales restringidos por edad (NSFW) con miembros mayores de 18 años. El bot rechaza automáticamente cualquier contenido con etiquetas de menores o de apariencia infantil y no permite desactivar ese filtro.'),
-  feedExtras('/anime18/run', 'Publica ahora usando la configuración guardada (requiere confirmar la restricción de edad).')(g));
+const anime18Extras = (g) => h('div', {}, h('p', { class: 'warn', style: 'margin-top:16px' }, '🔞 Configura un canal restringido por edad (NSFW). La verificación de acceso de tu servidor puede gestionar quién entra; Discord sigue exigiendo la restricción del canal para este contenido. El filtro contra contenido de menores o de apariencia infantil permanece activo.'),
+  feedExtras('/anime18/run', 'Publica usando la configuración guardada.')(g));
 
 /* ---------- Editor de embeds ---------- */
 async function embedsExtras(g, { lists }) {
