@@ -166,6 +166,25 @@ async function ticketsExtras(g, { channels, roles }) {
   const roleOptions = roles.map((x) => [x.id, '@' + x.name]);
   const categoryOptions = categories.map((x) => [x.id, x.name]);
   const fieldRows = h('div');
+  const categoryRows = h('div');
+  const readonlyRoles = h('select', { multiple: true, size: 4 }, roleOptions.map(([v,n]) => h('option',{value:v},n)));
+  const addCategory = (cat = {}) => {
+    const label = h('input',{maxlength:80,placeholder:'Ej. Soporte general',value:cat.label||''});
+    const description = h('input',{maxlength:100,placeholder:'Breve descripción',value:cat.description||''});
+    const emoji = h('input',{maxlength:32,placeholder:'Emoji opcional',value:cat.emoji||''});
+    const channel = selectOf(categoryOptions,cat.channelId||null,'— categoría de Discord —');
+    const team = h('select',{multiple:true,size:3},roleOptions.map(([v,n])=>h('option',{value:v,selected:(cat.supportRoleIds||[]).includes(v)},n)));
+    const subs = h('textarea',{rows:3,placeholder:'Subcategorías, una por línea. Ej. Problema técnico\\nConsulta general'});
+    subs.value=(cat.subcategories||[]).map(x=>x.label).join('\\n');
+    const row=h('div',{class:'glass',style:'padding:14px;margin:10px 0;display:grid;gap:8px'},
+      h('div',{class:'row'},h('strong',{},'Categoría'),h('button',{class:'btn ghost',onclick:()=>row.remove()},'Eliminar')),
+      h('label',{},'Nombre'),label,h('label',{},'Descripción'),description,h('label',{},'Emoji'),emoji,
+      h('label',{},'Categoría de Discord donde crear tickets'),channel,
+      h('label',{},'Roles que atenderán esta categoría (puedes seleccionar varios)'),team,
+      h('label',{},'Subcategorías (una por línea)'),subs);
+    row.readCategory=()=>({id:cat.id||('cat-'+Math.random().toString(36).slice(2,10)),label:label.value.trim(),description:description.value.trim(),emoji:emoji.value.trim(),channelId:channel.value||null,supportRoleIds:[...team.selectedOptions].map(x=>x.value),subcategories:subs.value.split('\\n').map((v,i)=>v.trim()).filter(Boolean).slice(0,25).map((v,i)=>({id:'sub-'+i+'-'+v.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,16),label:v}))});
+    categoryRows.append(row);
+  };
   const addField = (f = {}) => {
     const label = h('input', { maxlength: 45, placeholder: 'Pregunta (ej. ¿En qué podemos ayudarte?)', value: f.label || '' });
     const placeholder = h('input', { maxlength: 100, placeholder: 'Texto de ayuda', value: f.placeholder || '' });
@@ -199,11 +218,16 @@ async function ticketsExtras(g, { channels, roles }) {
     }
     fieldRows.replaceChildren();
     (p.formFields || []).forEach(addField);
+    categoryRows.replaceChildren();
+    (p.panelCategories || []).forEach(addCategory);
+    [...readonlyRoles.options].forEach(o => { o.selected = (p.readonlyRoleIds || []).includes(o.value); });
   };
   const readValues = () => ({
     ...Object.fromEntries(Object.entries(controls).map(([k, el]) => [k, el.type === 'checkbox' ? el.checked : el.value])),
     categoryId: controls.categoryId.value || null, supportRoleId: controls.supportRoleId.value || null,
     formFields: [...fieldRows.children].map((x) => x.readField()).filter((x) => x.label).slice(0,5),
+    panelCategories: [...categoryRows.children].map(x=>x.readCategory()).filter(x=>x.label).slice(0,25),
+    readonlyRoleIds: [...readonlyRoles.selectedOptions].map(x=>x.value),
   });
   const draw = () => {
     box.replaceChildren(
@@ -223,6 +247,11 @@ async function ticketsExtras(g, { channels, roles }) {
         h('label',{},'Canal donde aparecerá el panel'), controls.panelChannelId,
         h('label',{},'Categoría donde se crearán los tickets'), controls.categoryId,
         h('label',{},'Rol que atenderá los tickets'), controls.supportRoleId,
+        h('h3',{},'Categorías que verá el usuario'),
+        h('p',{class:'muted'},'El usuario podrá elegir una categoría y, si la defines, una subcategoría. Cada categoría puede usar su propia categoría de Discord y varios roles de atención.'),
+        categoryRows,
+        h('button',{class:'btn ghost',onclick:()=>{if(categoryRows.children.length>=25)return toast('Máximo 25 categorías','err');addCategory();}},'+ Añadir categoría'),
+        h('label',{},'Roles adicionales de solo lectura (pueden ver el ticket, pero no escribir)'), readonlyRoles,
         h('h3',{},'Diseño del panel'),
         h('label',{},'Título'), controls.panelTitle, h('label',{},'Descripción'), controls.panelDescription,
         h('label',{},'Texto del botón'), controls.buttonLabel, h('label',{},'Emoji del botón'), controls.buttonEmoji,
