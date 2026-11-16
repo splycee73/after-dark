@@ -217,7 +217,8 @@ export async function closeTicket({ client, guild, channel, ticket, closer, reas
     }
   }
   await channel.permissionOverwrites.edit(t.owner_id, { ViewChannel: false }).catch(() => {});
-  const { rows: [panelCfg] } = t.panel_id ? await query('SELECT close_message FROM ticket_panels WHERE id=$1', [t.panel_id]) : { rows: [] };\n  const del = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('tk:delete').setLabel('Eliminar canal').setEmoji('🗑️').setStyle(ButtonStyle.Danger));
+  const { rows: [panelCfg] } = t.panel_id ? await query('SELECT close_message FROM ticket_panels WHERE id=$1', [t.panel_id]) : { rows: [] };
+  const del = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('tk:delete').setLabel('Eliminar canal').setEmoji('🗑️').setStyle(ButtonStyle.Danger));
   await channel.send({
     embeds: [new EmbedBuilder().setColor(0xf87171).setDescription(render(panelCfg?.close_message || cfg.closeMessage, { closer: `<@${closer.id}>`, reason: why }))],
     components: [del], allowedMentions: { parse: [] },
