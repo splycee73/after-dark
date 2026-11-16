@@ -19,7 +19,7 @@ Todos arrancan **desactivados**: actívalos en el dashboard (interruptor "Activa
 
 ## Render
 Web Service (Node, build `npm install`, start `npm start`, health check `/health`) + PostgreSQL. Variables en `.env.example`.
-`ANTHROPIC_API_KEY` solo es necesaria para el módulo IA.
+Módulo IA: basta una clave, `GEMINI_API_KEY` (gratis, https://aistudio.google.com/app/apikey) o `ANTHROPIC_API_KEY` (de pago).
 
 ## Permisos del bot en cada servidor
 Administrar roles, canales, apodos, expulsar/banear, aislar miembros, gestionar mensajes, ver registro de invitaciones

@@ -11,7 +11,7 @@ import { sendWelcome } from '../services/welcome.js';
 import * as ar from '../services/autoroles.js';
 import * as sg from '../services/suggestions.js';
 import * as emb from '../services/embeds.js';
-import { aiConfigured, usageToday } from '../services/ai.js';
+import { aiConfigured, provider, usageToday } from '../services/ai.js';
 import { runManga, runAnime18 } from '../services/feeds.js';
 
 const SNOW = /^\d{17,20}$/;
@@ -151,7 +151,7 @@ export function createGuildExtras2(client) {
   }));
 
   // --- IA / Manga / Anime +18 ---
-  r.get('/ai/status', wrap(async (req, res) => res.json({ configured: aiConfigured(), usage: await usageToday(req.guild.id) })));
+  r.get('/ai/status', wrap(async (req, res) => res.json({ configured: aiConfigured(), provider: provider(), usage: await usageToday(req.guild.id) })));
   r.post('/manga/run', wrap(async (req, res) => { res.json({ posted: await runManga(client, req.guild, { force: true }) }); }));
   r.post('/anime18/run', wrap(async (req, res) => { res.json({ posted: await runAnime18(client, req.guild, { force: true }) }); }));
 

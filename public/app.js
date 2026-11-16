@@ -272,7 +272,7 @@ async function suggestionsExtras(g) {
 }
 async function aiExtras(g) {
   const s = await api(sg(g, '/ai/status'));
-  return h('div', {}, h('h3', {}, 'Estado'), h('p', { class: s.configured ? 'muted' : 'warn' }, s.configured ? '✅ Clave de IA configurada en el servidor.' : '⚠️ Falta la variable ANTHROPIC_API_KEY en Render: la IA no responderá hasta añadirla.'),
+  return h('div', {}, h('h3', {}, 'Estado'), h('p', { class: s.configured ? 'muted' : 'warn' }, s.configured ? `✅ IA conectada (${s.provider === 'gemini' ? 'Gemini' : 'Anthropic'}).` : '⚠️ Falta GEMINI_API_KEY (gratis) o ANTHROPIC_API_KEY en Render: la IA no responderá hasta añadir una.'),
     statCards([['Mensajes hoy', s.usage.messages], ['Usuarios hoy', s.usage.users]]));
 }
 const feedExtras = (path, text) => (g) => h('div', { style: 'margin-top:18px' },

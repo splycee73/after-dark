@@ -4,6 +4,8 @@ import { config } from '../config.js';
 // La URL externa de Render (*.render.com) exige SSL; la interna no.
 const ssl = config.databaseUrl.includes('.render.com') ? { rejectUnauthorized: false } : false;
 export const pool = new pg.Pool({ connectionString: config.databaseUrl, ssl, max: 10 });
+// Cada conexión usa el esquema del bot primero (las consultas del proyecto no llevan prefijo).
+pool.on('connect', (client) => { client.query(`SET search_path TO ${config.dbSchema}, public`).catch(() => {}); });
 export const query = (text, params) => pool.query(text, params);
 
 export async function withTx(fn) {

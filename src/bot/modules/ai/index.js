@@ -1,7 +1,7 @@
 import { Events } from 'discord.js';
 import { getModuleState } from '../../../services/guilds.js';
 import { claimCooldown } from '../../../services/economy.js';
-import { askClaude, aiConfigured, takeDailyUse } from '../../../services/ai.js';
+import { askAI, aiConfigured, takeDailyUse } from '../../../services/ai.js';
 import { logger } from '../../../lib/logger.js';
 
 const chunks = (t) => t.match(/[\s\S]{1,1900}(\s|$)/g)?.map((x) => x.trim()).filter(Boolean) ?? [t.slice(0, 1900)];
@@ -31,14 +31,14 @@ export default {
       const { enabled, config: c } = await getModuleState(m.guild.id, 'ia');
       if (!enabled || !c.channelId || m.channelId !== c.channelId) return; // solo responde en su canal
       if (c.allowedRoleId && !m.member?.roles.cache.has(c.allowedRoleId)) return;
-      if (!aiConfigured()) return void m.reply('⚠️ La IA no está configurada (falta ANTHROPIC_API_KEY en el servidor del bot).').catch(() => {});
+      if (!aiConfigured()) return void m.reply('⚠️ La IA no está configurada (falta GEMINI_API_KEY o ANTHROPIC_API_KEY en el servidor del bot).').catch(() => {});
       const cd = await claimCooldown(m.guild.id, m.author.id, 'ai', c.cooldown);
       if (!cd.ok) return void m.react('⏳').catch(() => {});
       if (!(await takeDailyUse(m.guild.id, m.author.id, c.dailyLimit))) return void m.reply('Alcanzaste tu límite diario de mensajes con la IA.').catch(() => {});
       try {
         await m.channel.sendTyping();
         const messages = await history(m, client, c.memoryMessages);
-        const text = await askClaude({
+        const text = await askAI({
           model: c.model, maxTokens: c.maxTokens, messages,
           system: `${c.systemPrompt}\n\nLos mensajes de los usuarios llevan su nombre entre corchetes; no repitas ese formato en tus respuestas. Responde en menos de 1900 caracteres.`,
         });

@@ -138,7 +138,7 @@ export const SCHEMAS = {
   embeds: [],
   ia: [
     ref('channel', 'channelId', 'Canal donde responde la IA', { section: 'General' }),
-    str('model', 'Modelo', 'claude-haiku-5-5', 60, { required: true }),
+    str('model', 'Modelo (si no coincide con tu proveedor se usa uno por defecto)', 'claude-haiku-5-5', 60, { required: true }),
     str('systemPrompt', 'Personalidad e instrucciones', 'Eres el asistente de AFTER DARK, un servidor de Discord. Respondes de forma amable, breve y natural, en el idioma del usuario.', 1500, { required: true }),
     int('maxTokens', 'Longitud máxima de la respuesta (tokens)', 400, 50, 1500),
     int('memoryMessages', 'Mensajes anteriores que recuerda', 8, 0, 20, { section: 'Límites' }),
