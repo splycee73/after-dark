@@ -4,7 +4,7 @@ const PANEL_FIELDS = `id, guild_id AS "guildId", name, panel_channel_id AS "pane
   category_id AS "categoryId", support_role_id AS "supportRoleId", panel_title AS "panelTitle",
   panel_description AS "panelDescription", button_label AS "buttonLabel", button_emoji AS "buttonEmoji",
   color, welcome_title AS "welcomeTitle", welcome_message AS "welcomeMessage",
-  close_message AS "closeMessage", form_fields AS "formFields", message_id AS "messageId", active`;
+  close_message AS "closeMessage", form_fields AS "formFields", panel_categories AS "panelCategories", readonly_role_ids AS "readonlyRoleIds", panel_image_url AS "panelImageUrl", panel_footer AS "panelFooter", message_id AS "messageId", active`;
 
 export async function listTicketPanels(guildId) {
   const { rows } = await query(`SELECT ${PANEL_FIELDS} FROM ticket_panels WHERE guild_id=$1 ORDER BY id`, [guildId]);
@@ -17,19 +17,20 @@ export async function getTicketPanel(id, guildId) {
 export async function saveTicketPanel(guildId, input, id = null) {
   const values = [guildId, input.name, input.panelChannelId, input.categoryId, input.supportRoleId,
     input.panelTitle, input.panelDescription, input.buttonLabel, input.buttonEmoji, input.color,
-    input.welcomeTitle, input.welcomeMessage, input.closeMessage, JSON.stringify(input.formFields), input.active];
+    input.welcomeTitle, input.welcomeMessage, input.closeMessage, JSON.stringify(input.formFields), JSON.stringify(input.panelCategories), JSON.stringify(input.readonlyRoleIds), input.panelImageUrl, input.panelFooter, input.active];
   if (id) {
     const { rows: [row] } = await query(`UPDATE ticket_panels SET name=$2,panel_channel_id=$3,category_id=$4,
       support_role_id=$5,panel_title=$6,panel_description=$7,button_label=$8,button_emoji=$9,color=$10,
-      welcome_title=$11,welcome_message=$12,close_message=$13,form_fields=$14::jsonb,active=$15,
-      updated_at=now() WHERE guild_id=$1 AND id=$16 RETURNING id`, [...values, id]);
+      welcome_title=$11,welcome_message=$12,close_message=$13,form_fields=$14::jsonb,panel_categories=$15::jsonb,
+      readonly_role_ids=$16::jsonb,panel_image_url=$17,panel_footer=$18,active=$19,
+      updated_at=now() WHERE guild_id=$1 AND id=$20 RETURNING id`, [...values, id]);
     if (!row) return null;
     return getTicketPanel(row.id, guildId);
   }
   const { rows: [row] } = await query(`INSERT INTO ticket_panels
     (guild_id,name,panel_channel_id,category_id,support_role_id,panel_title,panel_description,button_label,
-     button_emoji,color,welcome_title,welcome_message,close_message,form_fields,active)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,$15) RETURNING id`, values);
+     button_emoji,color,welcome_title,welcome_message,close_message,form_fields,panel_categories,readonly_role_ids,panel_image_url,panel_footer,active)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,$15::jsonb,$16::jsonb,$17,$18,$19) RETURNING id`, values);
   return getTicketPanel(row.id, guildId);
 }
 export async function deleteTicketPanel(guildId, id) {
