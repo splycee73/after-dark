@@ -183,6 +183,8 @@ export async function claimTicket({ ticket, member }) {
     for (const roleId of roles) await channel.permissionOverwrites.edit(roleId, { ViewChannel: false });
     await channel.permissionOverwrites.edit(member.id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true, AttachFiles: true });
   } catch {
+    for (const roleId of roles) await channel.permissionOverwrites.edit(roleId, { ViewChannel: true }).catch(() => {});
+    await channel.permissionOverwrites.delete(member.id).catch(() => {});
     await query('UPDATE tickets SET claimed_by=NULL, claimed_at=NULL WHERE id=$1 AND claimed_by=$2', [ticket.id, member.id]);
     throw new EconomyError('No pude restringir el acceso al reclamar. Revisa que el bot pueda administrar los permisos del canal.');
   }
