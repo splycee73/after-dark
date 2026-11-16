@@ -147,7 +147,6 @@ export function anime18Embed(post, cfg) {
 }
 
 export function assertAnime18Channel(guild, cfg, channel) {
-  if (!cfg.ageConfirmed) throw new EconomyError('Falta confirmar la restricción de edad en la configuración del módulo.');
   if (!channel?.nsfw) throw new EconomyError('Este contenido solo puede publicarse en canales restringidos por edad (NSFW).');
   if (!guild.members.me.permissionsIn(channel).has([P.SendMessages, P.EmbedLinks])) throw new EconomyError('El bot no puede escribir en ese canal.');
 }
