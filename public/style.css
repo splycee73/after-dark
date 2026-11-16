@@ -82,3 +82,9 @@ option{background:#15131f}
 .role-picker-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .role-picker-item input{accent-color:var(--accent);flex:0 0 auto}
 @media(max-width:650px){.role-picker-list{grid-template-columns:1fr}}
+
+.role-picker-trigger{width:100%;text-align:left;justify-content:flex-start}
+.role-picker-chosen{display:flex;flex-wrap:wrap;gap:6px}
+.role-picker-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border:1px solid var(--line);border-radius:999px;background:rgba(139,92,246,.12);font-size:12px}
+.role-picker-chip button{border:0;background:transparent;color:inherit;cursor:pointer;font-size:16px;line-height:1}
+.role-picker-list{margin-top:8px}
