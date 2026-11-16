@@ -186,18 +186,18 @@ async function ticketsExtras(g, { channels, roles }) {
     const emoji = h('input',{maxlength:32,placeholder:'Emoji opcional',value:cat.emoji||''});
     const welcomeTitle = h('input',{maxlength:256,placeholder:'Título del mensaje dentro del ticket',value:cat.welcomeTitle||''});
     const welcomeMessage = h('textarea',{rows:3,placeholder:'Mensaje personalizado al abrir esta categoría'}); welcomeMessage.value=cat.welcomeMessage||'';
-    const questions = h('textarea',{rows:3,placeholder:'Preguntas propias de esta categoría, una por línea'}); questions.value=(cat.formFields||[]).map(x=>x.label).join('\\n');
+    const questions = h('textarea',{rows:3,placeholder:'Preguntas propias de esta categoría, una por línea'}); questions.value=(cat.formFields||[]).map(x=>x.label).join('\n');
     const channel = selectOf(categoryOptions,cat.channelId||null,'— categoría de Discord —');
     const team = h('select',{multiple:true,size:3},roleOptions.map(([v,n])=>h('option',{value:v,selected:(cat.supportRoleIds||[]).includes(v)},n)));
-    const subs = h('textarea',{rows:3,placeholder:'Subcategorías, una por línea. Ej. Problema técnico\\nConsulta general'});
-    subs.value=(cat.subcategories||[]).map(x=>x.label).join('\\n');
+    const subs = h('textarea',{rows:3,placeholder:'Subcategorías, una por línea. Ej. Problema técnico\nConsulta general'});
+    subs.value=(cat.subcategories||[]).map(x=>x.label).join('\n');
     const row=h('div',{class:'glass',style:'padding:14px;margin:10px 0;display:grid;gap:8px'},
       h('div',{class:'row'},h('strong',{},'Categoría'),h('button',{class:'btn ghost',onclick:()=>row.remove()},'Eliminar')),
       h('label',{},'Nombre'),label,h('label',{},'Descripción'),description,h('label',{},'Emoji'),emoji,
       h('label',{},'Categoría de Discord donde crear tickets'),channel,
       h('label',{},'Roles que atenderán esta categoría (puedes seleccionar varios)'),team,
       h('label',{},'Subcategorías (una por línea)'),subs);
-    row.readCategory=()=>({id:cat.id||('cat-'+Math.random().toString(36).slice(2,10)),label:label.value.trim(),description:description.value.trim(),emoji:emoji.value.trim(),welcomeTitle:welcomeTitle.value.trim(),welcomeMessage:welcomeMessage.value.trim(),formFields:questions.value.split('\\n').map(v=>v.trim()).filter(Boolean).slice(0,5).map((label)=>({label,style:'paragraph',required:true,maxLength:1000})),channelId:channel.value||null,supportRoleIds:[...team.selectedOptions].map(x=>x.value),subcategories:subs.value.split('\\n').map((v,i)=>v.trim()).filter(Boolean).slice(0,25).map((v,i)=>({id:'sub-'+i+'-'+v.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,16),label:v}))});
+    row.readCategory=()=>({id:cat.id||('cat-'+Math.random().toString(36).slice(2,10)),label:label.value.trim(),description:description.value.trim(),emoji:emoji.value.trim(),welcomeTitle:welcomeTitle.value.trim(),welcomeMessage:welcomeMessage.value.trim(),formFields:questions.value.split('\n').map(v=>v.trim()).filter(Boolean).slice(0,5).map((label)=>({label,style:'paragraph',required:true,maxLength:1000})),channelId:channel.value||null,supportRoleIds:[...team.selectedOptions].map(x=>x.value),subcategories:subs.value.split('\n').map((v,i)=>v.trim()).filter(Boolean).slice(0,25).map((v,i)=>({id:'sub-'+i+'-'+v.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,16),label:v}))});
     categoryRows.append(row);
   };
   const addField = (f = {}) => {
