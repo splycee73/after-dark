@@ -163,7 +163,7 @@ function crudPanel(g, lists, o) {
         o.editable === false ? null : h('button', { class: 'btn ghost', onclick: () => { editing = r; draw().catch(() => {}); } }, 'Editar'),
         h('button', { class: 'btn ghost', onclick: guard(async () => { if (!confirm('¿Eliminar?')) return; await api(`/guilds/${g.id}${o.base}/${idOf(r)}`, { method: 'DELETE' }); toast('Eliminado'); reset(); }) }, '🗑'))])),
       h('h3', {}, editing ? 'Editando' : 'Añadir'),
-      inputs.map(([f, el]) => fieldRow(f, el)),
+      ...inputs.map(([f, el]) => fieldRow(f, el)),
       h('div', { class: 'row', style: 'margin-top:14px' }, h('button', { class: 'btn', onclick: submit }, editing ? 'Actualizar' : 'Crear'), editing ? h('button', { class: 'btn ghost', onclick: reset }, 'Cancelar') : null));
   }
   draw().catch((e) => toast(e.message, 'err'));
@@ -310,7 +310,7 @@ async function embedsExtras(g, { lists }) {
     }
     const el = big ? h('textarea', { rows: 5 }, get()) : h('input', { type, value: get() });
     el.addEventListener('input', () => { set(el.value); refresh(); });
-    return [h('label', {}, label), el];
+    return h('div', { class: 'field' }, h('label', {}, label), el);
   };
   const listBox = (key, max, blankItem, mkRow, addLabel) => {
     const box = h('div');
