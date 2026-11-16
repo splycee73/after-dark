@@ -93,11 +93,36 @@ function selectEl(opts, val, { multiple = false, empty = '— ninguno —' } = {
   for (const [id, name] of opts) sel.append(h('option', { value: id, selected: multiple ? (val || []).includes(id) : id === val }, name));
   return sel;
 }
+function rolePicker(options, value, safe = false) {
+  const selected = new Set(Array.isArray(value) ? value : []);
+  const root = h('div', { class: 'role-picker' });
+  const search = h('input', { class: 'role-picker-search', placeholder: '🔎 Buscar rol por nombre…' });
+  const summary = h('div', { class: 'role-picker-summary' });
+  const list = h('div', { class: 'role-picker-list' });
+  const draw = () => {
+    const q = search.value.trim().toLocaleLowerCase();
+    list.replaceChildren(...options.filter(([id, name]) => name.toLocaleLowerCase().includes(q) || id.includes(q)).map(([id, name]) => {
+      const check = h('input', { type: 'checkbox' }); check.checked = selected.has(id);
+      check.addEventListener('change', () => { check.checked ? selected.add(id) : selected.delete(id); update(); });
+      return h('label', { class: 'role-picker-item' }, check, h('span', {}, name));
+    }));
+    update();
+  };
+  const update = () => {
+    summary.textContent = selected.size ? `${selected.size} rol(es) seleccionado(s)` : 'Ningún rol seleccionado';
+  };
+  search.addEventListener('input', draw);
+  root.append(search, summary, list);
+  root._getSelected = () => [...selected];
+  draw();
+  return root;
+}
 function mkInput(f, val, lists) {
   const t = f.type;
   if (t === 'bool') { const e = h('input', { type: 'checkbox', class: 'sw' }); e.checked = !!val; return e; }
   if (t === 'channel' || t === 'role' || t === 'category') return selectEl(lists[t], val);
-  if (t === 'roles') return selectEl(lists.role, val, { multiple: true });
+  if (t === 'roles') return rolePicker(lists.role, val);
+  if (t === 'assignableRoles') return rolePicker(lists.assignableRole || [], val, true);
   if (t === 'select') return selectEl(f.options, val, { empty: '—' });
   if (t === 'int' || t === 'number') return h('input', { type: 'number', min: f.min, max: f.max, value: val ?? '' });
   if (t === 'color') return h('input', { type: 'color', value: /^#[0-9a-f]{6}$/i.test(val ?? '') ? val : '#8b5cf6' });
@@ -109,7 +134,7 @@ function readInput(f, el) {
   const t = f.type;
   if (t === 'bool') return el.checked;
   if (t === 'int' || t === 'number') return el.value === '' ? null : Number(el.value);
-  if (t === 'roles') return [...el.selectedOptions].map((o) => o.value);
+  if (t === 'roles' || t === 'assignableRoles') return el._getSelected?.() ?? [];
   if (t === 'channel' || t === 'role' || t === 'category' || t === 'select') return el.value || null;
   if (t === 'lines') return el.value.split('\n').map((s) => s.trim()).filter(Boolean);
   return el.value;
