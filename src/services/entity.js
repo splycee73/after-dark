@@ -1,4 +1,4 @@
-import { ChannelType } from 'discord.js';
+import { ChannelType, PermissionFlagsBits as P } from 'discord.js';
 import { query } from '../db/pool.js';
 import { EconomyError } from './economy.js';
 
@@ -24,6 +24,19 @@ function clean(f, v, guild) {
       const a = Array.isArray(v) ? v : [];
       if (a.length > (f.max ?? 10)) bad('demasiados roles');
       for (const r of a) if (!SNOW.test(r) || !guild.roles.cache.has(r)) bad('contiene un rol no válido');
+      if (f.req && !a.length) bad('selecciona al menos uno');
+      return a;
+    }
+    case 'assignableRoles': {
+      const a = Array.isArray(v) ? v : [];
+      if (a.length > (f.max ?? 10)) bad('demasiados roles');
+      const blocked = /(owner|co[-_ ]?owner|admin|administrator|staff|moderator|\\bmod\\b|developer|founder|fundador|cofundador|team|equipo)/i;
+      for (const id of a) {
+        const role = guild.roles.cache.get(id);
+        if (!SNOW.test(id) || !role || !role.editable || role.managed || blocked.test(role.name) ||
+          role.permissions.any([P.Administrator, P.ManageGuild, P.ManageRoles, P.ManageChannels, P.BanMembers, P.KickMembers, P.ModerateMembers, P.ManageWebhooks, P.ManageMessages]))
+          bad('incluye un rol privilegiado o que el bot no puede asignar');
+      }
       if (f.req && !a.length) bad('selecciona al menos uno');
       return a;
     }
