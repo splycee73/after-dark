@@ -46,6 +46,32 @@ export async function createTicket(guildId, channelId, openerId, panelId = null,
   );
   return row;
 }
+export async function getTicketById(guildId, id) {
+  const { rows: [row] } = await query('SELECT id, guild_id AS "guildId", channel_id AS "channelId", opener_id AS "openerId", status, claimed_by AS "claimedBy", priority, archived_at AS "archivedAt", created_at AS "createdAt" FROM tickets WHERE guild_id=$1 AND id=$2', [guildId, id]);
+  return row ?? null;
+}
+export async function claimTicket(channelId, userId) {
+  const { rows: [row] } = await query('UPDATE tickets SET claimed_by=$2 WHERE channel_id=$1 AND status=\'open\' RETURNING id, claimed_by AS "claimedBy"', [channelId, userId]);
+  return row ?? null;
+}
+export async function setTicketPriority(channelId, priority) {
+  const { rows: [row] } = await query('UPDATE tickets SET priority=$2 WHERE channel_id=$1 AND status=\'open\' RETURNING id, priority', [channelId, priority]);
+  return row ?? null;
+}
+export async function archiveTicket(channelId) {
+  const { rows: [row] } = await query('UPDATE tickets SET archived_at=COALESCE(archived_at,now()) WHERE channel_id=$1 AND status=\'closed\' RETURNING id, archived_at AS "archivedAt"', [channelId]);
+  return row ?? null;
+}
+export async function addTicketNote(guildId, ticketId, authorId, content) {
+  const sql = 'INSERT INTO ticket_notes(ticket_id,author_id,content) SELECT id,$3,$4 FROM tickets WHERE guild_id=$1 AND id=$2 RETURNING id, author_id AS "authorId", content, created_at AS "createdAt"';
+  const { rows: [row] } = await query(sql, [guildId, ticketId, authorId, content]);
+  return row ?? null;
+}
+export async function listTicketNotes(guildId, ticketId) {
+  const sql = 'SELECT n.id, n.author_id AS "authorId", n.content, n.created_at AS "createdAt" FROM ticket_notes n JOIN tickets t ON t.id=n.ticket_id WHERE t.guild_id=$1 AND t.id=$2 ORDER BY n.created_at ASC';
+  const { rows } = await query(sql, [guildId, ticketId]);
+  return rows;
+}
 export async function closeTicket(channelId, actorId) {
   const { rows: [row] } = await query(
     "UPDATE tickets SET status='closed', closed_at=now(), closed_by=$2 WHERE channel_id=$1 AND status='open' RETURNING id, guild_id, opener_id",
@@ -55,7 +81,7 @@ export async function closeTicket(channelId, actorId) {
 }
 export async function listTickets(guildId, limit = 25) {
   const { rows } = await query(
-    'SELECT id, channel_id AS "channelId", opener_id AS "openerId", panel_id AS "panelId", form_data AS "formData", status, created_at AS "createdAt", closed_at AS "closedAt" FROM tickets WHERE guild_id=$1 ORDER BY id DESC LIMIT $2',
+    'SELECT id, channel_id AS "channelId", opener_id AS "openerId", panel_id AS "panelId", form_data AS "formData", status, claimed_by AS "claimedBy", priority, archived_at AS "archivedAt", created_at AS "createdAt", closed_at AS "closedAt" FROM tickets WHERE guild_id=$1 ORDER BY id DESC LIMIT $2',
     [guildId, limit],
   );
   return rows;
