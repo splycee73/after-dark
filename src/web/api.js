@@ -59,7 +59,8 @@ export function createApi(client) {
     const bot = req.guild.members.me;
     const roles = req.guild.roles.cache.filter((x) => x.id !== req.guild.id && !x.managed);
     const basic = roles.map((x) => ({ id: x.id, name: x.name, color: x.hexColor }));
-    const assignableRole = roles.filter((x) => bot && x.editable && !x.permissions.has([
+    const blockedName = /(owner|co[-_ ]?owner|admin|administrator|staff|moderator|\\bmod\\b|developer|founder|fundador|cofundador|team|equipo)/i;
+    const assignableRole = roles.filter((x) => bot && x.editable && !blockedName.test(x.name) && !x.permissions.any([
       PermissionFlagsBits.Administrator, PermissionFlagsBits.ManageGuild, PermissionFlagsBits.ManageRoles,
       PermissionFlagsBits.ManageChannels, PermissionFlagsBits.BanMembers, PermissionFlagsBits.KickMembers,
       PermissionFlagsBits.ModerateMembers, PermissionFlagsBits.ManageWebhooks, PermissionFlagsBits.ManageMessages,
